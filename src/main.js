@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { TrackManager } from './track.js';
 import { Snail } from './snail.js';
 import { audioSystem } from './audio.js';
+import Peer from 'peerjs';
+import QRCode from 'qrcode';
 
 class GameEngine {
   constructor() {
@@ -38,9 +40,11 @@ class GameEngine {
     this.remotePlayers = new Map(); // playerId -> Snail instance
     this.connectedPlayerData = new Map(); // playerId -> playerInfo
 
-    // WebSocket Multi-player State
+    // Multi-player State (Dual Mode: WebRTC PeerJS + WebSocket)
     this.ws = null;
-    this.roomCode = '';
+    this.peer = null;
+    this.peerConnections = new Map(); // playerId -> PeerJS DataConnection
+    this.roomCode = this.generateRoomCode();
 
     // Timing & Stats
     this.raceStartTime = 0;
@@ -72,6 +76,15 @@ class GameEngine {
     requestAnimationFrame(this.animate);
   }
 
+  generateRoomCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 4; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+  }
+
   loadBackgroundMap() {
     const textureLoader = new THREE.TextureLoader();
     textureLoader.load(
@@ -89,11 +102,7 @@ class GameEngine {
     );
   }
 
-  async initServerAndWebSocket() {
-    if (!this.roomCode) {
-      this.roomCode = 'HEX1';
-    }
-
+  async updateRoomDisplayAndQR() {
     const roomEl = document.getElementById('room-code-display');
     if (roomEl) {
       roomEl.innerText = `RAUM: ${this.roomCode}`;
@@ -113,52 +122,238 @@ class GameEngine {
     }
 
     if (qrImg) {
-      qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(controllerUrl)}`;
-      qrImg.style.display = 'block';
+      try {
+        const qrDataUrl = await QRCode.toDataURL(controllerUrl, {
+          width: 260,
+          margin: 1,
+          color: {
+            dark: '#0f172a',
+            light: '#ffffff'
+          }
+        });
+        qrImg.src = qrDataUrl;
+        qrImg.style.display = 'block';
+      } catch (err) {
+        console.warn('QR code generation fallback:', err);
+        qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(controllerUrl)}`;
+        qrImg.style.display = 'block';
+      }
+    }
+  }
+
+  initPeerHost() {
+    const cleanCode = (this.roomCode || '').toLowerCase();
+    const hostPeerId = `witchlight_host_${cleanCode}`;
+    console.log('Initializing PeerJS Host with ID:', hostPeerId);
+
+    if (this.peer) {
+      try { this.peer.destroy(); } catch (e) {}
     }
 
+    try {
+      this.peer = new Peer(hostPeerId, { debug: 1 });
+
+      this.peer.on('open', (id) => {
+        console.log('🚀 PeerJS Host is online with ID:', id);
+      });
+
+      this.peer.on('connection', (conn) => {
+        console.log('📱 Remote player connecting via WebRTC:', conn.peer);
+
+        conn.on('open', () => {
+          console.log('✅ Remote player WebRTC data channel open:', conn.peer);
+        });
+
+        conn.on('data', (data) => {
+          try {
+            const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+            this.handlePeerMessage(parsed, conn);
+          } catch (err) {
+            console.error('Peer data parse error:', err);
+          }
+        });
+
+        conn.on('close', () => {
+          console.log('Remote player disconnected:', conn.peer);
+          if (conn.playerId) {
+            this.handleWsMessage({
+              type: 'PLAYER_DISCONNECTED',
+              payload: { playerId: conn.playerId }
+            });
+            this.peerConnections.delete(conn.playerId);
+          }
+        });
+
+        conn.on('error', (err) => {
+          console.warn('Peer connection error:', err);
+        });
+      });
+
+      this.peer.on('error', (err) => {
+        console.warn('PeerJS host error:', err);
+        if (err.type === 'unavailable-id') {
+          console.warn('Peer ID taken, generating fresh room code...');
+          this.roomCode = this.generateRoomCode();
+          this.updateRoomDisplayAndQR();
+          setTimeout(() => this.initPeerHost(), 500);
+        }
+      });
+    } catch (err) {
+      console.warn('PeerJS initialization error:', err);
+    }
+  }
+
+  handlePeerMessage(data, conn) {
+    const { type, payload } = data;
+
+    if (type === 'PLAYER_JOIN') {
+      const playerId = 'p_' + Math.random().toString(36).substring(2, 8);
+      conn.playerId = playerId;
+      this.peerConnections.set(playerId, conn);
+
+      const playerInfo = {
+        id: playerId,
+        name: payload.playerName || 'Spieler',
+        colorKey: null,
+        dndModifier: payload.dndModifier || 0,
+        progress: 0,
+        isStunned: false
+      };
+
+      // Confirm join back to smartphone controller
+      conn.send({
+        type: 'JOINED_SUCCESS',
+        payload: { playerId, roomCode: this.roomCode, player: playerInfo }
+      });
+
+      // Register player in host game engine
+      this.onRemotePlayerConnected(playerInfo);
+
+      // If race is already running, sync state
+      if (this.gameState === 'RACING') {
+        const activeSnail = this.turnOrder[this.currentTurnIndex];
+        const displayName = activeSnail 
+          ? (activeSnail.isPlayer ? `${activeSnail.playerName} (${activeSnail.colorData.name})` : activeSnail.colorData.name)
+          : '';
+        conn.send({
+          type: 'RACE_STATE_UPDATE',
+          payload: {
+            gameState: this.gameState,
+            activePlayerId: activeSnail?.id,
+            activeSnailName: displayName,
+            currentRound: this.currentRound
+          }
+        });
+      }
+      return;
+    }
+
+    if (type === 'PLAYER_SELECT_COLOR') {
+      const { colorKey } = payload;
+      conn.send({
+        type: 'COLOR_SELECTED_SUCCESS',
+        payload: { colorKey }
+      });
+      this.handleWsMessage({
+        type: 'PLAYER_COLOR_CHANGED',
+        payload: { playerId: conn.playerId, colorKey }
+      });
+      return;
+    }
+
+    if (type === 'PLAYER_ROLL_D20') {
+      this.handleWsMessage({
+        type: 'PLAYER_ROLL_D20',
+        payload: {
+          playerId: conn.playerId,
+          rollValue: payload.rollValue,
+          dndModifier: payload.dndModifier
+        }
+      });
+      return;
+    }
+
+    if (type === 'PLAYER_CAST_SPELL') {
+      this.handleWsMessage({
+        type: 'PLAYER_CAST_SPELL',
+        payload: {
+          playerId: conn.playerId,
+          spellId: payload.spellId
+        }
+      });
+      return;
+    }
+  }
+
+  broadcastRaceState(payload) {
+    // 1. Broadcast over local WebSocket if active
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({
+        type: 'HOST_SYNC_RACE_STATE',
+        payload
+      }));
+    }
+
+    // 2. Broadcast to all WebRTC PeerJS mobile controllers
+    const message = {
+      type: 'RACE_STATE_UPDATE',
+      payload
+    };
+    this.peerConnections.forEach((conn) => {
+      if (conn && conn.open) {
+        try {
+          conn.send(message);
+        } catch (e) {
+          console.warn('Failed to send state to peer:', conn.peer, e);
+        }
+      }
+    });
+  }
+
+  async initServerAndWebSocket() {
+    await this.updateRoomDisplayAndQR();
+    this.initPeerHost();
+
+    const isVercel = window.location.hostname.includes('vercel.app');
     if (!isVercel) {
       try {
         const res = await fetch('/api/info');
         if (res.ok) {
           const info = await res.json();
-          if (info.qrDataUrl && qrImg) {
-            qrImg.src = info.qrDataUrl;
-            qrImg.style.display = 'block';
-          }
+          const urlDisplay = document.getElementById('controller-url-display');
           if (info.controllerUrl && urlDisplay) {
             urlDisplay.innerText = `${info.controllerUrl}?room=${this.roomCode}`;
           }
         }
       } catch (err) {
-        console.warn('API info fetch error:', err);
+        console.log('API info fetch skipped in standalone mode.');
       }
-    }
 
-    // Connect WebSocket
-    try {
-      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      this.ws = new WebSocket(`${wsProtocol}//${window.location.host}/ws`);
+      // Try local WebSocket connection for local Bun server
+      try {
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        this.ws = new WebSocket(`${wsProtocol}//${window.location.host}/ws`);
 
-      this.ws.onopen = () => {
-        console.log('Host WebSocket connected!');
-        this.ws.send(JSON.stringify({ type: 'HOST_CREATE_ROOM' }));
-      };
+        this.ws.onopen = () => {
+          console.log('Host WebSocket connected to local Bun server!');
+          this.ws.send(JSON.stringify({ type: 'HOST_CREATE_ROOM' }));
+        };
 
-      this.ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          this.handleWsMessage(data);
-        } catch (err) {
-          console.error('WS parse error:', err);
-        }
-      };
+        this.ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            this.handleWsMessage(data);
+          } catch (err) {
+            console.error('WS parse error:', err);
+          }
+        };
 
-      this.ws.onerror = (e) => {
-        console.warn('WS error or standalone host mode (e.g. on Vercel static)');
-      };
-    } catch (e) {
-      console.warn('WebSocket init exception:', e);
+        this.ws.onerror = () => {
+          console.log('Local WebSocket server unavailable, PeerJS WebRTC active.');
+        };
+      } catch (e) {
+        console.log('WS init skipped, PeerJS WebRTC active.');
+      }
     }
   }
 
@@ -167,22 +362,8 @@ class GameEngine {
 
     if (type === 'ROOM_CREATED') {
       this.roomCode = payload.roomCode;
-      const roomEl = document.getElementById('room-code-display');
-      if (roomEl) roomEl.innerText = `RAUM: ${this.roomCode}`;
-
-      const isVercel = window.location.hostname.includes('vercel.app');
-      const baseUrl = isVercel
-        ? 'https://witchlightsnailrace.vercel.app/controller.html'
-        : `${window.location.origin}/controller.html`;
-      const controllerUrl = `${baseUrl}?room=${this.roomCode}`;
-
-      const qrImg = document.getElementById('qr-image');
-      const urlDisplay = document.getElementById('controller-url-display');
-      if (urlDisplay) urlDisplay.innerText = controllerUrl;
-      if (qrImg) {
-        qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(controllerUrl)}`;
-        qrImg.style.display = 'block';
-      }
+      this.updateRoomDisplayAndQR();
+      this.initPeerHost();
     } else if (type === 'PLAYER_CONNECTED') {
       this.onRemotePlayerConnected(payload.player);
     } else if (type === 'PLAYER_COLOR_CHANGED') {
@@ -462,18 +643,13 @@ class GameEngine {
       turnBanner.style.color = activeSnail.colorData.css;
     }
 
-    // Broadcast active turn over WebSocket to controllers
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify({
-        type: 'HOST_SYNC_RACE_STATE',
-        payload: {
-          gameState: this.gameState,
-          activePlayerId: activeSnail.id,
-          activeSnailName: displayName,
-          currentRound: this.currentRound
-        }
-      }));
-    }
+    // Broadcast active turn to controllers (WebRTC PeerJS & WebSocket)
+    this.broadcastRaceState({
+      gameState: this.gameState,
+      activePlayerId: activeSnail.id,
+      activeSnailName: displayName,
+      currentRound: this.currentRound
+    });
 
     // AI Turn Automation (if NPC snail)
     if (!activeSnail.isPlayer) {
@@ -560,16 +736,11 @@ class GameEngine {
     document.getElementById('end-screen')?.classList.remove('hidden');
     document.getElementById('end-screen')?.classList.add('active');
 
-    // Broadcast race finish to controllers
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify({
-        type: 'HOST_SYNC_RACE_STATE',
-        payload: {
-          gameState: this.gameState,
-          winnerName
-        }
-      }));
-    }
+    // Broadcast race finish to controllers (WebRTC PeerJS & WebSocket)
+    this.broadcastRaceState({
+      gameState: this.gameState,
+      winnerName
+    });
   }
 
   renderEditorWaypointsList() {

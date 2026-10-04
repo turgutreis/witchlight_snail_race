@@ -7,6 +7,14 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="/peerjs.min.js"></script>
+  <script>
+    if (typeof Peer === 'undefined') {
+      const s = document.createElement('script');
+      s.src = 'https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js';
+      document.head.appendChild(s);
+    }
+  </script>
   <style>
     * {
       box-sizing: border-box;
@@ -458,7 +466,10 @@
   </div>
 
   <script>
-    let socket = null;
+    let transportType = 'none'; // 'ws' or 'peer'
+    let wsSocket = null;
+    let peer = null;
+    let peerConn = null;
     let myPlayerId = null;
     let myRoomCode = '';
     let myPlayerName = '';
@@ -478,9 +489,10 @@
 
     // Auto-fill room code from URL params if present
     const urlParams = new URLSearchParams(window.location.search);
-    const roomParam = urlParams.get('room');
+    const roomParam = urlParams.get('room') || urlParams.get('code');
     if (roomParam) {
-      document.getElementById('input-room').value = roomParam.toUpperCase();
+      const roomInput = document.getElementById('input-room');
+      if (roomInput) roomInput.value = roomParam.toUpperCase();
     }
 
     // Explicit Screen Switcher
@@ -491,14 +503,130 @@
     }
 
     function initWebSocket() {
-      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      socket = new WebSocket(`${wsProtocol}//${window.location.host}/ws`);
+      const isVercel = window.location.hostname.includes('vercel.app');
+      if (isVercel) {
+        // Vercel does not host WebSockets; PeerJS WebRTC handles connection
+        return;
+      }
 
-      socket.onopen = () => console.log('Connected to Bun Elysia WebSocket!');
-      socket.onmessage = (e) => {
-        try { handleServerMessage(JSON.parse(e.data)); } catch (err) { console.error(err); }
+      try {
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        wsSocket = new WebSocket(`${wsProtocol}//${window.location.host}/ws`);
+
+        wsSocket.onopen = () => console.log('Local Bun WebSocket connected!');
+        wsSocket.onmessage = (e) => {
+          try { handleServerMessage(JSON.parse(e.data)); } catch (err) { console.error(err); }
+        };
+        wsSocket.onclose = () => {
+          console.log('Local WebSocket closed. Fallback to WebRTC available.');
+        };
+        wsSocket.onerror = () => {
+          console.log('Local WebSocket unavailable. Fallback to WebRTC available.');
+        };
+      } catch (e) {
+        console.log('WS init skipped or failed.');
+      }
+    }
+
+    function sendPlayerMessage(data) {
+      if (transportType === 'peer' && peerConn && peerConn.open) {
+        peerConn.send(data);
+      } else if (wsSocket && wsSocket.readyState === WebSocket.OPEN) {
+        wsSocket.send(JSON.stringify(data));
+      } else if (peerConn && peerConn.open) {
+        peerConn.send(data);
+      } else {
+        console.warn('No active connection to send message:', data);
+      }
+    }
+
+    function resetJoinButton() {
+      const btn = document.getElementById('btn-join');
+      if (btn) {
+        btn.disabled = false;
+        btn.innerText = '🚀 RAUM BEITRETEN';
+      }
+    }
+
+    function connectPeerJS(roomCode, playerName, dndMod) {
+      const hostId = `witchlight_host_${roomCode.toLowerCase()}`;
+      console.log('Connecting to PeerJS Host:', hostId);
+
+      if (typeof Peer === 'undefined') {
+        alert('WebRTC wird geladen... Bitte kurz warten und erneut tippen!');
+        resetJoinButton();
+        return;
+      }
+
+      if (!peer) {
+        try {
+          peer = new Peer({ debug: 1 });
+        } catch (e) {
+          console.error('Peer creation error:', e);
+          alert('Konnte WebRTC nicht initialisieren. Bitte Seite neu laden.');
+          resetJoinButton();
+          return;
+        }
+
+        peer.on('error', (err) => {
+          console.warn('Peer error:', err);
+          alert('Verbindungsfehler: ' + (err.type || 'Host nicht erreichbar. Prüfe den Raum-Code!'));
+          resetJoinButton();
+        });
+      }
+
+      const doConnect = () => {
+        peerConn = peer.connect(hostId, { reliable: true });
+
+        const timeout = setTimeout(() => {
+          if (!peerConn || !peerConn.open) {
+            alert('Keine Verbindung zum Spielleiter mit Code "' + roomCode + '". Ist das Spiel auf dem TV/PC geöffnet?');
+            resetJoinButton();
+          }
+        }, 9000);
+
+        peerConn.on('open', () => {
+          clearTimeout(timeout);
+          console.log('WebRTC connection established with host!');
+          transportType = 'peer';
+
+          // Send PLAYER_JOIN
+          sendPlayerMessage({
+            type: 'PLAYER_JOIN',
+            payload: { roomCode, playerName, dndModifier: dndMod }
+          });
+        });
+
+        peerConn.on('data', (data) => {
+          try {
+            const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+            handleServerMessage(parsed);
+          } catch (err) {
+            console.error('Peer data parse error:', err);
+          }
+        });
+
+        peerConn.on('close', () => {
+          console.log('Peer connection closed');
+          if (myPlayerId) {
+            const banner = document.getElementById('turn-banner');
+            if (banner) banner.innerText = '⚠️ Verbindung zum Spielleiter getrennt.';
+          }
+        });
+
+        peerConn.on('error', (err) => {
+          clearTimeout(timeout);
+          console.warn('PeerConn error:', err);
+          alert('Verbindungsfehler: ' + err);
+          resetJoinButton();
+        });
       };
-      socket.onclose = () => alert('Verbindung zum Server getrennt! Bitte Seite neu laden.');
+
+      if (peer.open) {
+        doConnect();
+      } else {
+        peer.once('open', doConnect);
+      }
     }
 
     function handleServerMessage(data) {
@@ -519,8 +647,7 @@
         showScreen('screen-waiting-host');
       } else if (type === 'ERROR') {
         alert(payload.message);
-        document.getElementById('btn-join').disabled = false;
-        document.getElementById('btn-join').innerText = '🚀 RAUM BEITRETEN';
+        resetJoinButton();
       } else if (type === 'RACE_STATE_UPDATE') {
         handleRaceStateUpdate(payload);
       }
@@ -551,31 +678,30 @@
       btnJoin.disabled = true;
       btnJoin.innerText = 'VERBINDE...';
 
-      if (!socket || socket.readyState !== WebSocket.OPEN) {
-        initWebSocket();
-        setTimeout(() => sendJoin(roomCode, myPlayerName), 400);
-      } else {
-        sendJoin(roomCode, myPlayerName);
-      }
-    });
+      myRoomCode = roomCode;
 
-    function sendJoin(roomCode, playerName) {
-      socket.send(JSON.stringify({
-        type: 'PLAYER_JOIN',
-        payload: { roomCode, playerName, dndModifier: myDndModifier }
-      }));
-    }
+      // 1. If local WebSocket is open, join via WebSocket
+      if (wsSocket && wsSocket.readyState === WebSocket.OPEN) {
+        transportType = 'ws';
+        sendPlayerMessage({
+          type: 'PLAYER_JOIN',
+          payload: { roomCode, playerName: myPlayerName, dndModifier: myDndModifier }
+        });
+        return;
+      }
+
+      // 2. Otherwise connect via PeerJS WebRTC
+      connectPeerJS(roomCode, myPlayerName, myDndModifier);
+    });
 
     // Step 2: Snail Click
     document.querySelectorAll('#snail-list .snail-card').forEach(card => {
       card.addEventListener('click', () => {
         const key = card.dataset.key;
-        if (socket && socket.readyState === WebSocket.OPEN) {
-          socket.send(JSON.stringify({
-            type: 'PLAYER_SELECT_COLOR',
-            payload: { colorKey: key }
-          }));
-        }
+        sendPlayerMessage({
+          type: 'PLAYER_SELECT_COLOR',
+          payload: { colorKey: key, playerId: myPlayerId }
+        });
       });
     });
 
@@ -624,12 +750,10 @@
       const total = rollVal + myDndModifier;
       document.getElementById('d20-btn-title').innerText = rollVal === 20 ? 'NAT 20! 🔥' : rollVal === 1 ? 'NAT 1! 💤' : `WURF: ${total}`;
 
-      if (socket && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({
-          type: 'PLAYER_ROLL_D20',
-          payload: { rollValue: rollVal, dndModifier: myDndModifier }
-        }));
-      }
+      sendPlayerMessage({
+        type: 'PLAYER_ROLL_D20',
+        payload: { playerId: myPlayerId, rollValue: rollVal, dndModifier: myDndModifier }
+      });
     });
 
     // Spells
@@ -639,12 +763,10 @@
         const spellId = btn.dataset.spell;
         if (navigator.vibrate) navigator.vibrate(30);
 
-        if (socket && socket.readyState === WebSocket.OPEN) {
-          socket.send(JSON.stringify({
-            type: 'PLAYER_CAST_SPELL',
-            payload: { spellId }
-          }));
-        }
+        sendPlayerMessage({
+          type: 'PLAYER_CAST_SPELL',
+          payload: { playerId: myPlayerId, spellId }
+        });
       });
     });
 
@@ -654,12 +776,10 @@
       if (navigator.vibrate) navigator.vibrate([100, 100, 100]);
       alert('Du hast heimlich deinen Schneckenschleim eingeölt! 😈');
 
-      if (socket && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({
-          type: 'PLAYER_CAST_SPELL',
-          payload: { spellId: 'lettuce' }
-        }));
-      }
+      sendPlayerMessage({
+        type: 'PLAYER_CAST_SPELL',
+        payload: { playerId: myPlayerId, spellId: 'lettuce' }
+      });
     });
 
     window.addEventListener('DOMContentLoaded', () => {
