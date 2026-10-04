@@ -90,40 +90,73 @@ class GameEngine {
   }
 
   async initServerAndWebSocket() {
-    try {
-      const res = await fetch('/api/info');
-      const info = await res.json();
+    const isVercel = window.location.hostname.includes('vercel.app');
+    const controllerUrl = isVercel
+      ? 'https://witchlightsnailrace.vercel.app/controller.html'
+      : `${window.location.origin}/controller.html`;
 
-      const qrImg = document.getElementById('qr-image');
-      const urlDisplay = document.getElementById('controller-url-display');
-      if (info.qrDataUrl && qrImg) {
-        qrImg.src = info.qrDataUrl;
+    const qrImg = document.getElementById('qr-image');
+    const urlDisplay = document.getElementById('controller-url-display');
+    const roomEl = document.getElementById('room-code-display');
+
+    if (urlDisplay) {
+      urlDisplay.innerText = controllerUrl;
+    }
+
+    if (isVercel) {
+      if (qrImg) {
+        qrImg.src = '/qr_vercel.png';
         qrImg.style.display = 'block';
       }
-      if (info.controllerUrl && urlDisplay) {
-        urlDisplay.innerText = info.controllerUrl;
+      if (roomEl) {
+        roomEl.innerText = 'D&D LOBBY';
       }
-    } catch (err) {
-      console.warn('API info fetch error:', err);
+    } else {
+      try {
+        const res = await fetch('/api/info');
+        if (res.ok) {
+          const info = await res.json();
+          if (info.qrDataUrl && qrImg) {
+            qrImg.src = info.qrDataUrl;
+            qrImg.style.display = 'block';
+          }
+          if (info.controllerUrl && urlDisplay) {
+            urlDisplay.innerText = info.controllerUrl;
+          }
+        }
+      } catch (err) {
+        if (qrImg) {
+          qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(controllerUrl)}`;
+          qrImg.style.display = 'block';
+        }
+      }
     }
 
     // Connect WebSocket
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    this.ws = new WebSocket(`${wsProtocol}//${window.location.host}/ws`);
+    try {
+      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      this.ws = new WebSocket(`${wsProtocol}//${window.location.host}/ws`);
 
-    this.ws.onopen = () => {
-      console.log('Host WebSocket connected to Bun ElysiaJS!');
-      this.ws.send(JSON.stringify({ type: 'HOST_CREATE_ROOM' }));
-    };
+      this.ws.onopen = () => {
+        console.log('Host WebSocket connected!');
+        this.ws.send(JSON.stringify({ type: 'HOST_CREATE_ROOM' }));
+      };
 
-    this.ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        this.handleWsMessage(data);
-      } catch (err) {
-        console.error('WS parse error:', err);
-      }
-    };
+      this.ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          this.handleWsMessage(data);
+        } catch (err) {
+          console.error('WS parse error:', err);
+        }
+      };
+
+      this.ws.onerror = (e) => {
+        console.warn('WS error or standalone host mode (e.g. on Vercel static)');
+      };
+    } catch (e) {
+      console.warn('WebSocket init exception:', e);
+    }
   }
 
   handleWsMessage(data) {
@@ -240,7 +273,8 @@ class GameEngine {
     // 8 Official Giant Snails from D&D The Wild Beyond the Witchlight
     const snailKeys = ['rosa', 'blau', 'violett', 'gruen', 'gelb', 'orange', 'rot', 'schwarz'];
     snailKeys.forEach((key, idx) => {
-      const snail = new Snail(`ai_${idx + 1}`, key, false, idx, this.trackManager, 0);
+      const level1AiMod = (idx % 2 === 0) ? 1 : 2;
+      const snail = new Snail(`ai_${idx + 1}`, key, false, idx, this.trackManager, level1AiMod);
       this.snails.push(snail);
     });
 

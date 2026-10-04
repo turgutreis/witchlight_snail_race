@@ -292,16 +292,16 @@
           </div>
 
           <div style="background: rgba(0,0,0,0.3); padding: 12px; border-radius: 12px; text-align: left;">
-            <label style="font-size: 0.75rem; color: #fbbf24; font-weight: 800;">D&D FERTIGKEIT:</label>
+            <label style="font-size: 0.75rem; color: #fbbf24; font-weight: 800;">D&D FERTIGKEIT (STUFE 1):</label>
             <select id="select-skill" class="input-field" style="margin-top: 4px; text-align: left; font-size: 0.9rem; padding: 10px;">
-              <option value="animal">🐾 Tierkunde (Animal Handling)</option>
-              <option value="vehicle">🛒 Wagenlenken (Land Vehicles)</option>
-              <option value="dex">⚡ Nur Geschicklichkeit (DEX Check)</option>
+              <option value="animal" data-mod="3">🐾 Tierkunde geübt (+3)</option>
+              <option value="vehicle" data-mod="3">🛒 Wagenlenken geübt (+3)</option>
+              <option value="dex" data-mod="1">⚡ Geschicklichkeit ungeübt (+1)</option>
             </select>
 
             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
               <span style="font-size: 0.8rem; color: #cbd5e1;">Modifikator (inkl. Übung):</span>
-              <input id="input-mod" type="number" class="input-field" value="3" min="-2" max="10" style="width: 70px; padding: 6px; font-size: 1.1rem;" />
+              <input id="input-mod" type="number" class="input-field" value="3" min="-1" max="5" style="width: 70px; padding: 6px; font-size: 1.1rem;" />
             </div>
           </div>
 
@@ -527,6 +527,16 @@
     }
 
     // Step 1: Join Click
+    const selectSkill = document.getElementById('select-skill');
+    if (selectSkill) {
+      selectSkill.addEventListener('change', (e) => {
+        const opt = e.target.options[e.target.selectedIndex];
+        if (opt && opt.dataset.mod) {
+          document.getElementById('input-mod').value = opt.dataset.mod;
+        }
+      });
+    }
+
     const btnJoin = document.getElementById('btn-join');
     btnJoin.addEventListener('click', () => {
       const roomCode = document.getElementById('input-room').value.trim().toUpperCase();

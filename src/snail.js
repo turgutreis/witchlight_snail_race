@@ -36,8 +36,9 @@ export class Snail {
     this.speed = 0;
     this.stuckProgress = 0;
 
-    // Steering laneOffset initialization (-0.4 to +0.4)
-    this.laneOffset = (laneIndex - 2.5) * 0.16;
+    // 8 distinct lanes across the sand track width (laneIndex 0..7)
+    this.baseLaneOffset = (laneIndex - 3.5) * 0.22;
+    this.laneOffset = this.baseLaneOffset;
 
     // Stun state
     this.isStunned = false;
@@ -251,29 +252,29 @@ export class Snail {
 
     let effectiveRoll = rollValue;
 
-    // Apply Snail Specific Perks:
-    // 2. Flinkfuß (Blau): Fast-Runner (Mindestwurf 7)
-    if (this.colorKey === 'blau' && effectiveRoll < 7) {
-      effectiveRoll = 7;
+    // Apply Snail Specific Perks (Tuned for D&D Level 1):
+    // 2. Flinkfuß (Blau): Fast-Runner (Mindestwurf 5)
+    if (this.colorKey === 'blau' && effectiveRoll < 5) {
+      effectiveRoll = 5;
     }
-    // 4. Schnellblatt (Grün): Salat-Gier (+2 auf W20)
+    // 4. Schnellblatt (Grün): Salat-Gier (+1 auf W20)
     if (this.colorKey === 'gruen') {
-      effectiveRoll += 2;
+      effectiveRoll += 1;
     }
-    // 6. Flitzi (Orange): Zappel-Reroll (Reroll 1-3 einmal)
-    if (this.colorKey === 'orange' && effectiveRoll <= 3) {
+    // 6. Flitzi (Orange): Zappel-Reroll (Reroll 1-2 einmal)
+    if (this.colorKey === 'orange' && effectiveRoll <= 2) {
       effectiveRoll = Math.floor(Math.random() * 20) + 1;
     }
-    // 8. Majestät (Schwarz): Unerschütterlich (Nat 1 wird zu 6)
+    // 8. Majestät (Schwarz): Unerschütterlich (Nat 1 wird zu 4)
     if (this.colorKey === 'schwarz' && effectiveRoll === 1) {
-      effectiveRoll = 6;
+      effectiveRoll = 4;
     }
 
     const mod = typeof dndModifier === 'number' ? dndModifier : (this.dndModifier || 0);
     const totalRoll = effectiveRoll + mod;
 
     let progressGain = 0.025;
-    const isCrit = (rollValue === 20 || totalRoll >= 22 || (this.colorKey === 'gelb' && effectiveRoll >= 18));
+    const isCrit = (rollValue === 20 || totalRoll >= 22 || (this.colorKey === 'gelb' && effectiveRoll >= 19));
     const isFumble = (effectiveRoll === 1);
 
     if (isCrit) { // Nat 20 / Blumenblitz 18+
@@ -411,8 +412,8 @@ export class Snail {
   update(delta, time, isRacing = false) {
     this.checkStunRecovery();
 
-    // Self-centering drift back to center of sand track
-    this.laneOffset *= 0.988;
+    // Maintain assigned lane so snails never merge or overlap
+    this.laneOffset += (this.baseLaneOffset - this.laneOffset) * 0.05;
 
     // Handle Turbo Boost (visual animation only, no runaway frame progress!)
     if (this.isTurboActive) {
