@@ -37,10 +37,10 @@ export class Snail {
     this.stuckProgress = 0;
 
     // Compact scale for snails so they fit comfortably inside the mud track lanes
-    this.baseScale = 0.35;
+    this.baseScale = 0.25;
 
     // 8 distinct lanes across the sand track width (laneIndex 0..7)
-    this.baseLaneOffset = (laneIndex - 3.5) * 0.11;
+    this.baseLaneOffset = (laneIndex - 3.5) * 0.07;
     this.laneOffset = this.baseLaneOffset;
 
     // Stun state

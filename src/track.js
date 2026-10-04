@@ -1,25 +1,36 @@
 import * as THREE from 'three';
 
 // Default Waypoints mapped to the background map "The Greate Snail Race"
+// Based directly on the user's template boundary drawing
 // Coordinate bounds: X [-10 to +10], Y [-5.625 to +5.625]
 export const DEFAULT_WAYPOINTS = [
-  { x: -7.4, y: 0.9, z: 0 },   // 1: START Banner
-  { x: -7.2, y: 2.8, z: 0 },   // Heading north through sand
-  { x: -5.0, y: 3.9, z: 0 },   // High curve around red/white tent
-  { x: -2.3, y: 2.15, z: 0 },  // 4: Mud chute above tents
-  { x: -0.2, y: 1.0, z: 0 },   // Downhill slope toward crossing
-  { x: 1.4,  y: -0.5, z: 0 },  // 2: Crossing point (enter right loop)
-  { x: 3.4,  y: 0.5, z: 0 },   // Enter loop around pit
-  { x: 5.6,  y: 1.25, z: 0 },  // Top curve above pit
-  { x: 7.7,  y: -0.6, z: 0 },  // 3: Outer right curve
-  { x: 5.8,  y: -2.3, z: 0 },  // Bottom curve below pit
-  { x: 3.5,  y: -1.3, z: 0 },  // Exiting loop
-  { x: 1.4,  y: -0.5, z: 0 },  // 2: Crossing point (re-crossing)
-  { x: -0.6, y: -1.6, z: 0 },  // Enter bottom straight
-  { x: -3.6, y: -2.3, z: 0 },  // 6: Straight along fence
-  { x: -6.8, y: -2.5, z: 0 },  // Lower left bend
-  { x: -8.1, y: -1.2, z: 0 },  // Far left outer turn
-  { x: -7.4, y: 0.9, z: 0 }    // Back to START Banner
+  { x: -7.45, y:  0.80, z: 0 },  // 1: START Banner
+  { x: -7.30, y:  2.30, z: 0 },  // Sand heading north
+  { x: -6.20, y:  3.30, z: 0 },  // Curve above circus tents
+  { x: -4.60, y:  3.25, z: 0 },  // Top curve apex
+  { x: -3.20, y:  1.90, z: 0 },  // Descent toward chute 4
+  { x: -2.20, y:  1.05, z: 0 },  // Chute 4 entry (safe inside mud)
+  { x: -1.20, y:  1.05, z: 0 },  // Mud Chute 4 center
+  { x:  0.00, y:  1.10, z: 0 },  // Pre-crossing straight
+  { x:  1.10, y:  0.85, z: 0 },  // Upper approach to crossing 2
+  { x:  2.00, y:  0.20, z: 0 },  // Crossing 2 (upper path into loop)
+  { x:  2.80, y:  0.15, z: 0 },  // Passing crossing into loop
+  { x:  3.50, y:  0.35, z: 0 },  // Channel between tree and rock
+  { x:  4.50, y:  1.15, z: 0 },  // Ascending into loop above pit
+  { x:  6.20, y:  1.60, z: 0 },  // Loop top curve above spike pit
+  { x:  7.60, y:  0.60, z: 0 },  // 3: Far right outer turn
+  { x:  7.60, y: -0.80, z: 0 },  // Far right lower turn
+  { x:  6.80, y: -2.15, z: 0 },  // Bottom right curve
+  { x:  5.50, y: -2.35, z: 0 },  // Strictly under spike pit
+  { x:  3.80, y: -1.95, z: 0 },  // Exiting loop below pit
+  { x:  2.30, y: -1.25, z: 0 },  // Crossing 2 (lower path exiting loop)
+  { x:  1.10, y: -2.35, z: 0 },  // Exiting to bottom straight
+  { x: -0.50, y: -2.48, z: 0 },  // Bottom straight entry
+  { x: -2.50, y: -2.30, z: 0 },  // Bottom straight mid (under tents)
+  { x: -4.80, y: -2.55, z: 0 },  // Bottom straight along fence 6
+  { x: -6.80, y: -2.48, z: 0 },  // Bottom left bend
+  { x: -7.90, y: -1.00, z: 0 },  // Left outer curve heading north
+  { x: -7.45, y:  0.80, z: 0 }   // Back to START Banner
 ];
 
 export class TrackManager {
@@ -83,11 +94,11 @@ export class TrackManager {
     if (!this.gridVisible || !this.curve) return;
 
     const linePoints = [];
-    const laneWidth = 0.11;
-    const halfWidth = 4 * laneWidth; // 0.44 total half width: strictly fits on mud track!
+    const laneWidth = 0.07;
+    const halfWidth = 4 * laneWidth; // 0.28 total half width: strictly fits within red boundaries!
 
     // 1. Longitudinal Lane Dividers (9 curves separating the 8 lanes)
-    const samples = 240;
+    const samples = 300;
     for (let k = 0; k <= 8; k++) {
       const offset = (k - 4) * laneWidth;
       for (let i = 0; i < samples; i++) {
@@ -101,8 +112,8 @@ export class TrackManager {
       }
     }
 
-    // 2. Cross Grid Lines (Distance Steps across all 8 lanes: 48 segments)
-    const totalSteps = 48;
+    // 2. Cross Grid Lines (Distance Steps across all 8 lanes: 52 segments)
+    const totalSteps = 52;
     for (let s = 0; s < totalSteps; s++) {
       const t = s / totalSteps;
       const leftEdge = this.getPositionWithCustomOffset(t, -halfWidth).position;
