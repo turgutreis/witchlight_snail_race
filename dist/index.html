@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hexenlicht Schneckenrennen 🐌✨ – Spielleiter TV Screen</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <script type="module" crossorigin src="/assets/index-DYsonIup.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-CiQR-wxL.css">
+</head>
+<body>
+  <!-- 3D Canvas container -->
+  <div id="canvas-container"></div>
+
+  <!-- UI Overlay System (Pure Host / DM Display) -->
+  <div id="ui-overlay">
+
+    <!-- 1. START LOBBY OVERLAY (DM / TV SCREEN) -->
+    <div id="start-lobby" class="screen active">
+      <div class="lobby-card glass-panel" style="max-width: 680px; padding: 32px;">
+        <div class="logo-container">
+          <span class="sparkle left">✨</span>
+          <h1 class="game-title">Hexenlicht <br/><span class="title-sub">Schneckenrennen</span></h1>
+          <span class="sparkle right">✨</span>
+        </div>
+        <p class="subtitle">Spielleiter (DM) TV-Bildschirm – Rundenbasiertes D&D 5e Rennspiel</p>
+
+        <!-- QR Code & Join Info -->
+        <div class="qr-join-box" style="display: flex; align-items: center; justify-content: center; gap: 24px; background: rgba(0,0,0,0.4); padding: 18px; border-radius: 20px; border: 2px solid rgba(255,255,255,0.15);">
+          <img id="qr-image" src="" alt="QR Code" style="width: 130px; height: 130px; border-radius: 12px; border: 3px solid #fbbf24; display: none;" />
+          <div style="text-align: left;">
+            <div style="font-size: 0.9rem; color: #94a3b8; text-transform: uppercase; font-weight: 700;">Mit Smartphone beitreten:</div>
+            <div id="room-code-display" style="font-family: var(--font-title); font-size: 2.2rem; font-weight: 900; color: #fbbf24;">LOBBY...</div>
+            <div id="controller-url-display" style="font-size: 0.85rem; color: #38bdf8;">Scanne QR-Code oder öffne URL</div>
+          </div>
+        </div>
+
+        <!-- Connected Players Roster -->
+        <div style="background: rgba(15,23,42,0.6); padding: 16px; border-radius: 16px; margin: 12px 0;">
+          <h3 style="font-size: 1.1rem; color: #fef08a; margin-bottom: 8px;">Verbundene D&D-Charaktere & Riesenschnecken:</h3>
+          <div id="roster-list" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; text-align: left; font-size: 0.95rem;">
+            <div style="color: #94a3b8;">Warte auf Mitspieler...</div>
+          </div>
+        </div>
+
+        <button id="btn-start" class="primary-btn pulse-glow" style="font-size: 1.3rem; padding: 16px 32px;">
+          <span>🚀 RENNEN STARTEN (D&D INITIATIVE)</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- 2. IN-GAME HUD OVERLAY (DM / TV DISPLAY) -->
+    <div id="game-hud" class="hud-layer hidden">
+
+      <!-- Leaderboard & D20 Log Top Left -->
+      <div class="hud-panel leaderboard-panel glass-panel" style="min-width: 240px;">
+        <div class="panel-header">🏆 Platzierungen</div>
+        <div id="leaderboard-list">
+          <!-- Injected dynamically -->
+        </div>
+      </div>
+
+      <!-- Jahrmarkt-Stimmungs-Anzeige Top Center -->
+      <div class="hud-panel mood-panel glass-panel" style="position: absolute; top: 16px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 14px; padding: 10px 24px; border: 2px solid rgba(251, 191, 36, 0.5);">
+        <span style="font-size: 1.8rem;">🎪</span>
+        <div style="text-align: left;">
+          <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; font-weight: 800;">Jahrmarkt-Stimmung:</div>
+          <div id="mood-label" style="font-family: var(--font-title); font-size: 1.25rem; font-weight: 900; color: #fbbf24;">✨ Begeistert (+1)</div>
+        </div>
+      </div>
+
+      <!-- Turn-Based Action Status Banner Bottom Center -->
+      <div class="hud-panel glass-panel" style="position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); padding: 16px 32px; border-radius: 20px; border: 2px solid rgba(56, 189, 248, 0.5);">
+        <div id="turn-banner" style="font-family: var(--font-title); font-size: 1.5rem; font-weight: 900; color: #fff;">
+          🎲 RUNDE 1 | ZUG VON: SHELLYMUH
+        </div>
+      </div>
+
+      <!-- Track Editor Toggle Top Right -->
+      <div class="hud-panel top-right-panel">
+        <button id="btn-toggle-editor" class="small-btn">
+          🛠️ Pfad-Editor [E]
+        </button>
+      </div>
+    </div>
+
+    <!-- 3. END GAME OVERLAY -->
+    <div id="end-screen" class="screen hidden">
+      <div class="end-card glass-panel" style="max-width: 520px; padding: 32px;">
+        <div class="winner-trophy">🏆</div>
+        <h2 id="winner-text" class="winner-title">Die Rote Schnecke gewinnt!</h2>
+
+        <div class="stats-box">
+          <div class="stat-item">
+            <span class="stat-label">Gesamtzeit:</span>
+            <span id="stat-time" class="stat-value">00:00.0</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Gewinner:</span>
+            <span id="stat-rank" class="stat-value">1. Platz</span>
+          </div>
+        </div>
+
+        <button id="btn-restart" class="primary-btn pulse-glow" style="margin-top: 20px;">
+          <span>🔄 NÄCHSTES RENNEN</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- 4. DEBUG WAYPOINT EDITOR PANEL -->
+    <div id="editor-panel" class="editor-drawer hidden">
+      <div class="editor-header">
+        <h3>📍 Track Waypoint Editor</h3>
+        <button id="btn-close-editor">✖</button>
+      </div>
+      <p class="editor-desc">Ziehe die Punkte in Three.js oder passe die Koordinaten an. Taste [E] öffnet/schließt den Editor.</p>
+      <div id="waypoints-list" class="waypoints-scroll"></div>
+      <div class="editor-actions">
+        <button id="btn-export-points" class="secondary-btn">📋 Koordinaten kopieren</button>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>
