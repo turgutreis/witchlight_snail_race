@@ -94,11 +94,11 @@ export class TrackManager {
     if (!this.gridVisible || !this.curve) return;
 
     const linePoints = [];
-    const laneWidth = 0.125;
-    const halfWidth = 4 * laneWidth; // 0.50 total half width: generous, wide tactical track!
+    const laneWidth = 0.19;
+    const halfWidth = 4 * laneWidth; // 0.76 total half width: spans 1.52 across the mud arena!
 
     // 1. Longitudinal Lane Dividers (9 curves separating the 8 lanes)
-    const samples = 300;
+    const samples = 320;
     for (let k = 0; k <= 8; k++) {
       const offset = (k - 4) * laneWidth;
       for (let i = 0; i < samples; i++) {
@@ -128,7 +128,7 @@ export class TrackManager {
     const mat = new THREE.LineBasicMaterial({
       color: 0xfef08a,
       transparent: true,
-      opacity: 0.38,
+      opacity: 0.40,
       depthTest: false
     });
     const gridMesh = new THREE.LineSegments(geom, mat);
@@ -180,7 +180,7 @@ export class TrackManager {
     texture.colorSpace = THREE.SRGBColorSpace;
     const mat = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false });
     const sprite = new THREE.Sprite(mat);
-    sprite.scale.set(0.24, 0.24, 1);
+    sprite.scale.set(0.28, 0.28, 1);
     return sprite;
   }
 
