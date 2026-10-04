@@ -336,9 +336,18 @@ class GameEngine {
       });
     }
 
+    const gridToggleBtn = document.getElementById('btn-toggle-grid');
+    if (gridToggleBtn) {
+      gridToggleBtn.addEventListener('click', () => {
+        this.trackManager.toggleGrid();
+      });
+    }
+
     window.addEventListener('keydown', (e) => {
       if (e.key === 'e' || e.key === 'E') {
         toggleEditor();
+      } else if (e.key === 'g' || e.key === 'G') {
+        this.trackManager.toggleGrid();
       }
     });
   }

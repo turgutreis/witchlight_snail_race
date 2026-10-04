@@ -32,6 +32,11 @@ export class TrackManager {
     this.handleMeshes = [];
     this.editorVisible = false;
 
+    // Tactical Track Grid & Start Boxes
+    this.gridGroup = new THREE.Group();
+    this.gridVisible = true;
+    this.scene.add(this.gridGroup);
+
     this.scene.add(this.handleGroup);
     this.rebuildCurve();
   }
@@ -64,6 +69,117 @@ export class TrackManager {
     this.scene.add(this.trackLineMesh);
 
     this.updateHandles();
+    this.buildTrackGrid();
+  }
+
+  buildTrackGrid() {
+    while (this.gridGroup.children.length > 0) {
+      const obj = this.gridGroup.children[0];
+      this.gridGroup.remove(obj);
+      if (obj.geometry) obj.geometry.dispose();
+      if (obj.material) obj.material.dispose();
+    }
+
+    if (!this.gridVisible || !this.curve) return;
+
+    const linePoints = [];
+    const laneWidth = 0.26;
+    const halfWidth = 4 * laneWidth; // 1.04
+
+    // 1. Longitudinal Lane Dividers (9 curves separating the 8 lanes)
+    const samples = 220;
+    for (let k = 0; k <= 8; k++) {
+      const offset = (k - 4) * laneWidth;
+      for (let i = 0; i < samples; i++) {
+        const t1 = i / samples;
+        const t2 = (i + 1) / samples;
+        const p1 = this.getPositionWithCustomOffset(t1, offset).position;
+        const p2 = this.getPositionWithCustomOffset(t2, offset).position;
+
+        linePoints.push(p1.x, p1.y, 0.04);
+        linePoints.push(p2.x, p2.y, 0.04);
+      }
+    }
+
+    // 2. Cross Grid Lines (Distance Steps across all 8 lanes: 48 segments)
+    const totalSteps = 48;
+    for (let s = 0; s < totalSteps; s++) {
+      const t = s / totalSteps;
+      const leftEdge = this.getPositionWithCustomOffset(t, -halfWidth).position;
+      const rightEdge = this.getPositionWithCustomOffset(t, halfWidth).position;
+
+      linePoints.push(leftEdge.x, leftEdge.y, 0.04);
+      linePoints.push(rightEdge.x, rightEdge.y, 0.04);
+    }
+
+    const geom = new THREE.BufferGeometry();
+    geom.setAttribute('position', new THREE.Float32BufferAttribute(linePoints, 3));
+    const mat = new THREE.LineBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.30,
+      depthTest: false
+    });
+    const gridMesh = new THREE.LineSegments(geom, mat);
+    this.gridGroup.add(gridMesh);
+
+    // 3. Start Boxes with Snail Numbers (1 to 8) at Start Line
+    const snailColors = [
+      '#f472b6', // 1: Rosa (Shellymuh)
+      '#3b82f6', // 2: Blau (Flinkfuß)
+      '#a855f7', // 3: Violett (Hoher Pfad)
+      '#22c55e', // 4: Grün (Schnellblatt)
+      '#eab308', // 5: Gelb (Blumenblitz)
+      '#f97316', // 6: Orange (Flitzi)
+      '#ef4444', // 7: Rot (Halsbrecher)
+      '#64748b'  // 8: Schwarz (Majestät)
+    ];
+
+    for (let lane = 0; lane < 8; lane++) {
+      const offset = (lane - 3.5) * laneWidth;
+      const pos = this.getPositionWithCustomOffset(0.012, offset).position;
+
+      const numSprite = this.createNumberSprite(lane + 1, snailColors[lane]);
+      numSprite.position.set(pos.x, pos.y, 0.06);
+      this.gridGroup.add(numSprite);
+    }
+  }
+
+  createNumberSprite(num, color) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(32, 32, 26, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = color;
+    ctx.font = 'bold 30px Outfit, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(num), 32, 32);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    const mat = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false });
+    const sprite = new THREE.Sprite(mat);
+    sprite.scale.set(0.22, 0.22, 1);
+    return sprite;
+  }
+
+  toggleGrid() {
+    this.gridVisible = !this.gridVisible;
+    this.gridGroup.visible = this.gridVisible;
+    if (this.gridVisible && this.gridGroup.children.length === 0) {
+      this.buildTrackGrid();
+    }
+    return this.gridVisible;
   }
 
   updateHandles() {
