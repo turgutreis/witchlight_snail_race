@@ -3,23 +3,23 @@ import * as THREE from 'three';
 // Default Waypoints mapped to the background map "The Greate Snail Race"
 // Coordinate bounds: X [-10 to +10], Y [-5.625 to +5.625]
 export const DEFAULT_WAYPOINTS = [
-  { x: -6.6, y: 1.0, z: 0 },   // 1: START Banner
-  { x: -6.5, y: 3.2, z: 0 },   // Top-left inner curve
-  { x: -4.5, y: 4.2, z: 0 },   // Top-left high arch
-  { x: -2.0, y: 2.5, z: 0 },   // 4: Slope above tents
-  { x: 0.2,  y: 1.0, z: 0 },   // Approaching center crossing
-  { x: 1.7,  y: 0.0, z: 0 },   // 2: Center figure-8 crossing
-  { x: 3.5,  y: 0.4, z: 0 },   // Entering right loop
-  { x: 5.2,  y: 1.2, z: 0 },   // Right loop top
-  { x: 7.6,  y: -0.4, z: 0 },  // 3: Right loop outer curve
-  { x: 5.2,  y: -2.0, z: 0 },  // Right loop bottom
-  { x: 3.2,  y: -1.2, z: 0 },  // Exiting right loop
-  { x: 1.7,  y: 0.0, z: 0 },   // 2: Center figure-8 re-crossing
-  { x: -0.5, y: -1.4, z: 0 },  // Approaching bottom stretch
-  { x: -3.5, y: -2.2, z: 0 },  // 6: Bottom track along fence
-  { x: -7.0, y: -2.5, z: 0 },  // Bottom-left curve
-  { x: -8.0, y: -0.5, z: 0 },  // Left edge going up
-  { x: -6.6, y: 1.0, z: 0 }    // Back to START Banner
+  { x: -7.4, y: 0.9, z: 0 },   // 1: START Banner
+  { x: -7.2, y: 2.8, z: 0 },   // Heading north through sand
+  { x: -5.0, y: 3.9, z: 0 },   // High curve around red/white tent
+  { x: -2.3, y: 2.15, z: 0 },  // 4: Mud chute above tents
+  { x: -0.2, y: 1.0, z: 0 },   // Downhill slope toward crossing
+  { x: 1.4,  y: -0.5, z: 0 },  // 2: Crossing point (enter right loop)
+  { x: 3.4,  y: 0.5, z: 0 },   // Enter loop around pit
+  { x: 5.6,  y: 1.25, z: 0 },  // Top curve above pit
+  { x: 7.7,  y: -0.6, z: 0 },  // 3: Outer right curve
+  { x: 5.8,  y: -2.3, z: 0 },  // Bottom curve below pit
+  { x: 3.5,  y: -1.3, z: 0 },  // Exiting loop
+  { x: 1.4,  y: -0.5, z: 0 },  // 2: Crossing point (re-crossing)
+  { x: -0.6, y: -1.6, z: 0 },  // Enter bottom straight
+  { x: -3.6, y: -2.3, z: 0 },  // 6: Straight along fence
+  { x: -6.8, y: -2.5, z: 0 },  // Lower left bend
+  { x: -8.1, y: -1.2, z: 0 },  // Far left outer turn
+  { x: -7.4, y: 0.9, z: 0 }    // Back to START Banner
 ];
 
 export class TrackManager {
@@ -83,11 +83,11 @@ export class TrackManager {
     if (!this.gridVisible || !this.curve) return;
 
     const linePoints = [];
-    const laneWidth = 0.26;
-    const halfWidth = 4 * laneWidth; // 1.04
+    const laneWidth = 0.11;
+    const halfWidth = 4 * laneWidth; // 0.44 total half width: strictly fits on mud track!
 
     // 1. Longitudinal Lane Dividers (9 curves separating the 8 lanes)
-    const samples = 220;
+    const samples = 240;
     for (let k = 0; k <= 8; k++) {
       const offset = (k - 4) * laneWidth;
       for (let i = 0; i < samples; i++) {
@@ -115,9 +115,9 @@ export class TrackManager {
     const geom = new THREE.BufferGeometry();
     geom.setAttribute('position', new THREE.Float32BufferAttribute(linePoints, 3));
     const mat = new THREE.LineBasicMaterial({
-      color: 0xffffff,
+      color: 0xfef08a,
       transparent: true,
-      opacity: 0.30,
+      opacity: 0.25,
       depthTest: false
     });
     const gridMesh = new THREE.LineSegments(geom, mat);
@@ -169,7 +169,7 @@ export class TrackManager {
     texture.colorSpace = THREE.SRGBColorSpace;
     const mat = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false });
     const sprite = new THREE.Sprite(mat);
-    sprite.scale.set(0.22, 0.22, 1);
+    sprite.scale.set(0.18, 0.18, 1);
     return sprite;
   }
 

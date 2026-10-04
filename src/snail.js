@@ -36,11 +36,11 @@ export class Snail {
     this.speed = 0;
     this.stuckProgress = 0;
 
-    // Compact scale for snails so they fit comfortably on track without overlapping
-    this.baseScale = 0.48;
+    // Compact scale for snails so they fit comfortably inside the mud track lanes
+    this.baseScale = 0.35;
 
     // 8 distinct lanes across the sand track width (laneIndex 0..7)
-    this.baseLaneOffset = (laneIndex - 3.5) * 0.26;
+    this.baseLaneOffset = (laneIndex - 3.5) * 0.11;
     this.laneOffset = this.baseLaneOffset;
 
     // Stun state
@@ -201,8 +201,8 @@ export class Snail {
     texture.colorSpace = THREE.SRGBColorSpace;
     const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false });
     const sprite = new THREE.Sprite(spriteMat);
-    sprite.scale.set(0.55, 0.20, 1);
-    sprite.position.set(0, 0.42, 0.2);
+    sprite.scale.set(0.40, 0.14, 1);
+    sprite.position.set(0, 0.30, 0.2);
     return sprite;
   }
 
@@ -220,7 +220,7 @@ export class Snail {
 
     const trailMat = new THREE.PointsMaterial({
       color: this.colorData.hex,
-      size: 0.06,
+      size: 0.05,
       transparent: true,
       opacity: 0.5,
       blending: THREE.AdditiveBlending
