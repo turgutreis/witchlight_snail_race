@@ -90,28 +90,34 @@ class GameEngine {
   }
 
   async initServerAndWebSocket() {
+    if (!this.roomCode) {
+      this.roomCode = 'HEX1';
+    }
+
+    const roomEl = document.getElementById('room-code-display');
+    if (roomEl) {
+      roomEl.innerText = `RAUM: ${this.roomCode}`;
+    }
+
     const isVercel = window.location.hostname.includes('vercel.app');
-    const controllerUrl = isVercel
+    const baseUrl = isVercel
       ? 'https://witchlightsnailrace.vercel.app/controller.html'
       : `${window.location.origin}/controller.html`;
+    const controllerUrl = `${baseUrl}?room=${this.roomCode}`;
 
     const qrImg = document.getElementById('qr-image');
     const urlDisplay = document.getElementById('controller-url-display');
-    const roomEl = document.getElementById('room-code-display');
 
     if (urlDisplay) {
       urlDisplay.innerText = controllerUrl;
     }
 
-    if (isVercel) {
-      if (qrImg) {
-        qrImg.src = '/qr_vercel.png';
-        qrImg.style.display = 'block';
-      }
-      if (roomEl) {
-        roomEl.innerText = 'D&D LOBBY';
-      }
-    } else {
+    if (qrImg) {
+      qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(controllerUrl)}`;
+      qrImg.style.display = 'block';
+    }
+
+    if (!isVercel) {
       try {
         const res = await fetch('/api/info');
         if (res.ok) {
@@ -121,14 +127,11 @@ class GameEngine {
             qrImg.style.display = 'block';
           }
           if (info.controllerUrl && urlDisplay) {
-            urlDisplay.innerText = info.controllerUrl;
+            urlDisplay.innerText = `${info.controllerUrl}?room=${this.roomCode}`;
           }
         }
       } catch (err) {
-        if (qrImg) {
-          qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(controllerUrl)}`;
-          qrImg.style.display = 'block';
-        }
+        console.warn('API info fetch error:', err);
       }
     }
 
@@ -166,6 +169,20 @@ class GameEngine {
       this.roomCode = payload.roomCode;
       const roomEl = document.getElementById('room-code-display');
       if (roomEl) roomEl.innerText = `RAUM: ${this.roomCode}`;
+
+      const isVercel = window.location.hostname.includes('vercel.app');
+      const baseUrl = isVercel
+        ? 'https://witchlightsnailrace.vercel.app/controller.html'
+        : `${window.location.origin}/controller.html`;
+      const controllerUrl = `${baseUrl}?room=${this.roomCode}`;
+
+      const qrImg = document.getElementById('qr-image');
+      const urlDisplay = document.getElementById('controller-url-display');
+      if (urlDisplay) urlDisplay.innerText = controllerUrl;
+      if (qrImg) {
+        qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(controllerUrl)}`;
+        qrImg.style.display = 'block';
+      }
     } else if (type === 'PLAYER_CONNECTED') {
       this.onRemotePlayerConnected(payload.player);
     } else if (type === 'PLAYER_COLOR_CHANGED') {

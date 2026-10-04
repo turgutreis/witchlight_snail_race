@@ -662,7 +662,15 @@
       }
     });
 
-    window.addEventListener('DOMContentLoaded', initWebSocket);
+    window.addEventListener('DOMContentLoaded', () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const queryRoom = urlParams.get('room') || urlParams.get('code');
+      if (queryRoom) {
+        const inputRoom = document.getElementById('input-room');
+        if (inputRoom) inputRoom.value = queryRoom.toUpperCase();
+      }
+      initWebSocket();
+    });
   </script>
 </body>
 </html>

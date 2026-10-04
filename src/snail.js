@@ -36,8 +36,11 @@ export class Snail {
     this.speed = 0;
     this.stuckProgress = 0;
 
+    // Compact scale for snails so they fit comfortably on track without overlapping
+    this.baseScale = 0.48;
+
     // 8 distinct lanes across the sand track width (laneIndex 0..7)
-    this.baseLaneOffset = (laneIndex - 3.5) * 0.22;
+    this.baseLaneOffset = (laneIndex - 3.5) * 0.26;
     this.laneOffset = this.baseLaneOffset;
 
     // Stun state
@@ -77,6 +80,7 @@ export class Snail {
   createGraphics() {
     // Snail Root Group
     this.visualContainer = new THREE.Group();
+    this.visualContainer.scale.set(this.baseScale, this.baseScale, 1);
     this.group.add(this.visualContainer);
 
     // 1. Snail Body (grey/soft cream oval)
@@ -197,8 +201,8 @@ export class Snail {
     texture.colorSpace = THREE.SRGBColorSpace;
     const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false });
     const sprite = new THREE.Sprite(spriteMat);
-    sprite.scale.set(0.9, 0.32, 1);
-    sprite.position.set(0, 0.75, 0.2);
+    sprite.scale.set(0.55, 0.20, 1);
+    sprite.position.set(0, 0.42, 0.2);
     return sprite;
   }
 
@@ -216,7 +220,7 @@ export class Snail {
 
     const trailMat = new THREE.PointsMaterial({
       color: this.colorData.hex,
-      size: 0.12,
+      size: 0.06,
       transparent: true,
       opacity: 0.5,
       blending: THREE.AdditiveBlending
@@ -406,14 +410,14 @@ export class Snail {
   }
 
   squishAnimation() {
-    this.visualContainer.scale.set(1.25, 0.8, 1);
+    this.visualContainer.scale.set(this.baseScale * 1.25, this.baseScale * 0.8, 1);
   }
 
   update(delta, time, isRacing = false) {
     this.checkStunRecovery();
 
-    // Maintain assigned lane so snails never merge or overlap
-    this.laneOffset += (this.baseLaneOffset - this.laneOffset) * 0.05;
+    // Maintain assigned lane firmly so snails never merge or overlap
+    this.laneOffset += (this.baseLaneOffset - this.laneOffset) * 0.08;
 
     // Handle Turbo Boost (visual animation only, no runaway frame progress!)
     if (this.isTurboActive) {
@@ -422,9 +426,9 @@ export class Snail {
       }
     }
 
-    // Recover squish scale back to 1.0 smoothly
-    this.visualContainer.scale.x += (1.0 - this.visualContainer.scale.x) * 0.15;
-    this.visualContainer.scale.y += (1.0 - this.visualContainer.scale.y) * 0.15;
+    // Recover squish scale back to baseScale smoothly
+    this.visualContainer.scale.x += (this.baseScale - this.visualContainer.scale.x) * 0.15;
+    this.visualContainer.scale.y += (this.baseScale - this.visualContainer.scale.y) * 0.15;
 
     // Stun shake & dizzy stars rotation
     if (this.isStunned) {
