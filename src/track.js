@@ -94,8 +94,8 @@ export class TrackManager {
     if (!this.gridVisible || !this.curve) return;
 
     const linePoints = [];
-    const laneWidth = 0.07;
-    const halfWidth = 4 * laneWidth; // 0.28 total half width: strictly fits within red boundaries!
+    const laneWidth = 0.125;
+    const halfWidth = 4 * laneWidth; // 0.50 total half width: generous, wide tactical track!
 
     // 1. Longitudinal Lane Dividers (9 curves separating the 8 lanes)
     const samples = 300;
@@ -112,8 +112,8 @@ export class TrackManager {
       }
     }
 
-    // 2. Cross Grid Lines (Distance Steps across all 8 lanes: 52 segments)
-    const totalSteps = 52;
+    // 2. Cross Grid Lines (Distance Steps across all 8 lanes: 28 large tactical segments)
+    const totalSteps = 28;
     for (let s = 0; s < totalSteps; s++) {
       const t = s / totalSteps;
       const leftEdge = this.getPositionWithCustomOffset(t, -halfWidth).position;
@@ -128,7 +128,7 @@ export class TrackManager {
     const mat = new THREE.LineBasicMaterial({
       color: 0xfef08a,
       transparent: true,
-      opacity: 0.25,
+      opacity: 0.38,
       depthTest: false
     });
     const gridMesh = new THREE.LineSegments(geom, mat);
@@ -148,7 +148,7 @@ export class TrackManager {
 
     for (let lane = 0; lane < 8; lane++) {
       const offset = (lane - 3.5) * laneWidth;
-      const pos = this.getPositionWithCustomOffset(0.012, offset).position;
+      const pos = this.getPositionWithCustomOffset(0.015, offset).position;
 
       const numSprite = this.createNumberSprite(lane + 1, snailColors[lane]);
       numSprite.position.set(pos.x, pos.y, 0.06);
@@ -158,29 +158,29 @@ export class TrackManager {
 
   createNumberSprite(num, color) {
     const canvas = document.createElement('canvas');
-    canvas.width = 64;
-    canvas.height = 64;
+    canvas.width = 128;
+    canvas.height = 128;
     const ctx = canvas.getContext('2d');
 
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
     ctx.strokeStyle = color;
-    ctx.lineWidth = 4;
+    ctx.lineWidth = 7;
     ctx.beginPath();
-    ctx.arc(32, 32, 26, 0, Math.PI * 2);
+    ctx.arc(64, 64, 52, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
 
     ctx.fillStyle = color;
-    ctx.font = 'bold 30px Outfit, sans-serif';
+    ctx.font = '900 58px Outfit, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(String(num), 32, 32);
+    ctx.fillText(String(num), 64, 64);
 
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;
     const mat = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false });
     const sprite = new THREE.Sprite(mat);
-    sprite.scale.set(0.18, 0.18, 1);
+    sprite.scale.set(0.24, 0.24, 1);
     return sprite;
   }
 
