@@ -157,31 +157,151 @@
       box-shadow: 0 0 16px var(--snail-glow);
     }
 
-    .snail-icon-badge {
-      width: 44px;
-      height: 44px;
+    .snail-card.taken {
+      opacity: 0.38 !important;
+      filter: grayscale(0.9) !important;
+      pointer-events: none !important;
+      border-color: #475569 !important;
+      cursor: not-allowed !important;
+      background: rgba(15, 23, 42, 0.6) !important;
+      box-shadow: none !important;
+    }
+
+    .snail-card.taken .snail-icon-badge {
+      filter: grayscale(0.8);
+      box-shadow: none !important;
+      background: #475569 !important;
+    }
+
+    .snail-taken-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      background: rgba(239, 68, 68, 0.25);
+      border: 1px solid #ef4444;
+      border-radius: 6px;
+      color: #fca5a5;
+      font-size: 0.72rem;
+      font-weight: 700;
+      margin-top: 4px;
+    }
+
+    /* Tactical Combat Mobile UI */
+    .tactical-grid-container {
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      gap: 3px;
+      background: rgba(15, 23, 42, 0.85);
+      padding: 6px;
       border-radius: 12px;
-      background: var(--snail-color);
+      border: 2px solid rgba(255, 255, 255, 0.15);
+      margin: 10px 0;
+      aspect-ratio: 1 / 1;
+    }
+
+    .tact-cell {
+      aspect-ratio: 1 / 1;
+      border-radius: 4px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.4rem;
-      box-shadow: 0 0 12px var(--snail-glow);
-      flex-shrink: 0;
+      font-size: 0.72rem;
+      cursor: pointer;
+      position: relative;
+      transition: transform 0.1s ease, border-color 0.1s ease;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      user-select: none;
     }
 
-    .snail-title {
+    .tact-cell:active {
+      transform: scale(0.92);
+    }
+
+    .tact-cell.selected {
+      border: 2px solid #fbbf24 !important;
+      box-shadow: 0 0 10px rgba(251, 191, 36, 0.7);
+      background: rgba(251, 191, 36, 0.25) !important;
+    }
+
+    .tact-cell.has-me {
+      background: rgba(56, 189, 248, 0.45) !important;
+      border-color: #38bdf8 !important;
+      box-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
+    }
+
+    .tact-cell.has-enemy {
+      background: rgba(239, 68, 68, 0.35) !important;
+      border-color: #ef4444 !important;
+    }
+
+    .tact-cell.has-building {
+      background: rgba(245, 158, 11, 0.35) !important;
+      border-color: #f59e0b !important;
+    }
+
+    .tact-cell.has-water {
+      background: rgba(2, 132, 199, 0.4) !important;
+      border-color: #0284c7 !important;
+    }
+
+    .tact-cell.danger-telegraph {
+      border: 2px dashed #ef4444 !important;
+      animation: pulseCellDanger 1s infinite alternate;
+    }
+
+    @keyframes pulseCellDanger {
+      from { background: rgba(239, 68, 68, 0.2); }
+      to { background: rgba(239, 68, 68, 0.55); }
+    }
+
+    .tact-dpad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      max-width: 170px;
+      margin: 4px auto 10px auto;
+    }
+
+    .dpad-btn {
+      padding: 10px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 10px;
+      color: #fff;
+      font-size: 1.2rem;
+      cursor: pointer;
+    }
+
+    .dpad-btn:active {
+      background: rgba(255, 255, 255, 0.25);
+    }
+
+    .tact-action-btn {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 12px;
+      font-family: 'Outfit', sans-serif;
       font-weight: 800;
-      font-size: 0.95rem;
+      font-size: 0.92rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: transform 0.1s ease;
+      color: #fff;
     }
 
-    .snail-perk {
-      font-size: 0.75rem;
-      color: #cbd5e1;
-      margin-top: 2px;
+    .tact-action-btn:active {
+      transform: scale(0.97);
     }
 
-    /* Gamepad UI Elements */
+    .tact-action-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
     .turn-status-banner {
       padding: 12px 16px;
       border-radius: 14px;
@@ -463,6 +583,71 @@
       </div>
     </div>
 
+    <!-- ============================================== -->
+    <!-- SCREEN 5: TAKTISCHER KAMPF (INTO THE BREACH)   -->
+    <!-- ============================================== -->
+    <div id="screen-tactical" class="mobile-screen">
+      <div class="card-panel" style="padding: 14px; display: flex; flex-direction: column; gap: 10px;">
+
+        <!-- Header: Hero Name, HP, Role -->
+        <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.4); padding: 10px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
+          <div>
+            <div id="tact-player-title" style="font-weight: 800; font-size: 1rem; color: #fbbf24;">Charakter 🐌</div>
+            <div id="tact-player-role" style="font-size: 0.75rem; color: #94a3b8; font-weight: 700;">Rolle: Krieger</div>
+          </div>
+          <div style="text-align: right;">
+            <div id="tact-player-hp" style="font-weight: 900; font-size: 1.1rem; color: #ef4444;">❤️❤️❤️</div>
+            <div id="tact-carnival-power" style="font-size: 0.72rem; color: #38bdf8; font-weight: 700;">🎪 Energie: 6/6</div>
+          </div>
+        </div>
+
+        <!-- Threat Alert Banner -->
+        <div id="tact-threat-banner" style="display: none; padding: 8px 12px; background: rgba(239, 68, 68, 0.25); border: 1px solid #ef4444; border-radius: 10px; color: #fca5a5; font-size: 0.8rem; font-weight: 700; text-align: center;">
+          ⚠️ GEFAHR: Du stehst im Zielfeld eines Angriffs!
+        </div>
+
+        <!-- Tactical Mini Grid (8x8) -->
+        <div style="font-size: 0.8rem; color: #94a3b8; font-weight: 700; text-align: center;">
+          Tippe auf ein Feld zum Zielen / Bewegen:
+        </div>
+        <div id="tactical-mini-grid" class="tactical-grid-container">
+          <!-- 64 cells generated dynamically -->
+        </div>
+
+        <!-- Selected Tile Info -->
+        <div id="tact-selected-info" style="font-size: 0.8rem; color: #fbbf24; font-weight: 700; text-align: center;">
+          Gewähltes Feld: (Keins)
+        </div>
+
+        <!-- Directional D-Pad for 1-Step Move -->
+        <div class="tact-dpad">
+          <div></div>
+          <button class="dpad-btn" data-dir="up">⬆️</button>
+          <div></div>
+          <button class="dpad-btn" data-dir="left">⬅️</button>
+          <button class="dpad-btn" data-dir="down">⬇️</button>
+          <button class="dpad-btn" data-dir="right">➡️</button>
+        </div>
+
+        <!-- Action Buttons -->
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <button id="btn-tact-move" class="tact-action-btn" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);">
+            <span>🏃 ZU GEWÄHLTEM FELD BEWEGEN</span>
+          </button>
+          <button id="btn-tact-push" class="tact-action-btn" style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);">
+            <span>💥 STOSS-SCHLAG (1 DMG + 1 FELD STOSS)</span>
+          </button>
+          <button id="btn-tact-special" class="tact-action-btn" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">
+            <span>🎯 SPEZIAL-FÄHIGKEIT</span>
+          </button>
+          <button id="btn-tact-pass" class="tact-action-btn" style="background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); color: #cbd5e1;">
+            <span>⏭️ MEINEN ZUG BEENDEN</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+
   </div>
 
   <script>
@@ -629,14 +814,45 @@
       }
     }
 
+    let currentTacticalState = null;
+    let selectedTargetCoord = null;
+
+    function updateTakenSnailsUI(takenSnails = {}) {
+      document.querySelectorAll('#snail-list .snail-card').forEach(card => {
+        const key = card.dataset.key;
+        const takenByName = takenSnails[key];
+
+        const existingBadge = card.querySelector('.snail-taken-badge');
+        if (existingBadge) existingBadge.remove();
+
+        if (takenByName && key !== myChosenSnailKey) {
+          card.classList.add('taken');
+          const badge = document.createElement('div');
+          badge.className = 'snail-taken-badge';
+          badge.innerText = `🔒 Vergeben an ${takenByName}`;
+          const textCol = card.querySelector('div:last-child');
+          if (textCol) textCol.appendChild(badge);
+        } else {
+          card.classList.remove('taken');
+        }
+      });
+    }
+
     function handleServerMessage(data) {
       const { type, payload } = data;
 
       if (type === 'JOINED_SUCCESS') {
         myPlayerId = payload.playerId;
         myRoomCode = payload.roomCode;
+        if (payload.takenSnails) {
+          updateTakenSnailsUI(payload.takenSnails);
+        }
         // Step 2: Show Snail Selection
         showScreen('screen-select-snail');
+      } else if (type === 'ROOM_PLAYERS_UPDATE') {
+        if (payload.takenSnails) {
+          updateTakenSnailsUI(payload.takenSnails);
+        }
       } else if (type === 'COLOR_SELECTED_SUCCESS') {
         myChosenSnailKey = payload.colorKey;
         const info = SNAIL_INFO[myChosenSnailKey] || { name: myChosenSnailKey, icon: '🐌', color: '#fff' };
@@ -650,6 +866,15 @@
         resetJoinButton();
       } else if (type === 'RACE_STATE_UPDATE') {
         handleRaceStateUpdate(payload);
+      } else if (type === 'MODE_CHANGED') {
+        if (payload.mode === 'TACTICAL') {
+          showScreen('screen-tactical');
+        } else if (payload.mode === 'RACE') {
+          if (myChosenSnailKey) showScreen('screen-waiting-host');
+          else showScreen('screen-select-snail');
+        }
+      } else if (type === 'TACTICAL_STATE_UPDATE') {
+        handleTacticalStateUpdate(payload);
       }
     }
 
@@ -697,6 +922,10 @@
     // Step 2: Snail Click
     document.querySelectorAll('#snail-list .snail-card').forEach(card => {
       card.addEventListener('click', () => {
+        if (card.classList.contains('taken')) {
+          alert('Diese Schnecke ist bereits gewählt!');
+          return;
+        }
         const key = card.dataset.key;
         sendPlayerMessage({
           type: 'PLAYER_SELECT_COLOR',
@@ -704,6 +933,219 @@
         });
       });
     });
+
+    // ==============================================
+    // TACTICAL COMBAT CONTROLLER HANDLERS
+    // ==============================================
+    function handleTacticalStateUpdate(state) {
+      currentTacticalState = state;
+
+      // Find my hero unit (or first unit if spectator)
+      const myHero = state.players.find(p => p.id === myPlayerId) || state.players[0];
+      if (!myHero) return;
+
+      // Update Header Info
+      document.getElementById('tact-player-title').innerText = `${myHero.name} (${myHero.role.icon})`;
+      document.getElementById('tact-player-role').innerText = `Rolle: ${myHero.role.name}`;
+
+      let hearts = '';
+      for (let i = 0; i < myHero.maxHp; i++) {
+        hearts += (i < myHero.hp ? '❤️' : '🖤');
+      }
+      document.getElementById('tact-player-hp').innerText = hearts;
+      document.getElementById('tact-carnival-power').innerText = `🎪 Energie: ${state.carnivalPower}/${state.maxCarnivalPower}`;
+
+      // Check if any enemy is targeting my hero
+      const threatBanner = document.getElementById('tact-threat-banner');
+      let inDanger = false;
+      state.enemies.forEach(e => {
+        if (e.intent && e.intent.targetX === myHero.x && e.intent.targetY === myHero.y) {
+          inDanger = true;
+        }
+      });
+      if (threatBanner) {
+        threatBanner.style.display = inDanger ? 'block' : 'none';
+        if (inDanger && navigator.vibrate) navigator.vibrate([80, 40, 80]);
+      }
+
+      // Update Action Buttons
+      const btnMove = document.getElementById('btn-tact-move');
+      const btnPush = document.getElementById('btn-tact-push');
+      const btnSpecial = document.getElementById('btn-tact-special');
+
+      if (btnMove) btnMove.disabled = myHero.hasMoved;
+      if (btnPush) btnPush.disabled = myHero.hasActed;
+      if (btnSpecial) {
+        btnSpecial.disabled = myHero.hasActed;
+        btnSpecial.querySelector('span').innerText = `🎯 ${myHero.role.abilityName}`;
+      }
+
+      // Render 8x8 Mini-Grid
+      renderTacticalMiniGrid(state, myHero);
+    }
+
+    function renderTacticalMiniGrid(state, myHero) {
+      const gridEl = document.getElementById('tactical-mini-grid');
+      if (!gridEl) return;
+      gridEl.innerHTML = '';
+
+      // Set default selected tile to adjacent tile if none
+      if (!selectedTargetCoord) {
+        selectedTargetCoord = { x: myHero.x, y: Math.min(7, myHero.y + 1) };
+      }
+
+      // 8x8 Grid: y from 7 (top) down to 0 (bottom) so north is up
+      for (let y = 7; y >= 0; y--) {
+        for (let x = 0; x < 8; x++) {
+          const cell = document.createElement('div');
+          cell.className = 'tact-cell';
+          cell.dataset.x = x;
+          cell.dataset.y = y;
+
+          // Is it selected?
+          if (selectedTargetCoord && selectedTargetCoord.x === x && selectedTargetCoord.y === y) {
+            cell.classList.add('selected');
+          }
+
+          // Is it my hero?
+          if (myHero.x === x && myHero.y === y) {
+            cell.classList.add('has-me');
+            cell.innerText = '🐌';
+          }
+          // Is it an ally?
+          else if (state.players.some(p => p.id !== myHero.id && p.x === x && p.y === y)) {
+            cell.innerText = '👥';
+          }
+          // Is it an enemy?
+          else {
+            const enemy = state.enemies.find(e => e.x === x && e.y === y);
+            if (enemy) {
+              cell.classList.add('has-enemy');
+              cell.innerText = enemy.icon || '💀';
+            }
+          }
+
+          // Is it a carnival building?
+          const bld = state.buildings.find(b => b.x === x && b.y === y);
+          if (bld) {
+            cell.classList.add('has-building');
+            cell.innerText = bld.icon || '🎪';
+          }
+
+          // Is it telegraphed as an attack destination?
+          const isDanger = state.enemies.some(e => e.intent && e.intent.targetX === x && e.intent.targetY === y);
+          if (isDanger) {
+            cell.classList.add('danger-telegraph');
+          }
+
+          cell.addEventListener('click', () => {
+            selectedTargetCoord = { x, y };
+            document.querySelectorAll('#tactical-mini-grid .tact-cell').forEach(c => c.classList.remove('selected'));
+            cell.classList.add('selected');
+            const info = document.getElementById('tact-selected-info');
+            if (info) info.innerText = `Gewähltes Feld: (${x}, ${y})`;
+          });
+
+          gridEl.appendChild(cell);
+        }
+      }
+
+      const info = document.getElementById('tact-selected-info');
+      if (info && selectedTargetCoord) {
+        info.innerText = `Gewähltes Feld: (${selectedTargetCoord.x}, ${selectedTargetCoord.y})`;
+      }
+    }
+
+    // Directional D-Pad Click
+    document.querySelectorAll('.tact-dpad .dpad-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (!currentTacticalState) return;
+        const myHero = currentTacticalState.players.find(p => p.id === myPlayerId) || currentTacticalState.players[0];
+        if (!myHero || myHero.hasMoved) {
+          alert('Bereits bewegt in dieser Runde!');
+          return;
+        }
+
+        const dir = btn.dataset.dir;
+        let nx = myHero.x;
+        let ny = myHero.y;
+        if (dir === 'up') ny += 1;
+        else if (dir === 'down') ny -= 1;
+        else if (dir === 'left') nx -= 1;
+        else if (dir === 'right') nx += 1;
+
+        if (nx < 0 || nx > 7 || ny < 0 || ny > 7) return;
+
+        sendPlayerMessage({
+          type: 'TACTICAL_MOVE',
+          payload: { destX: nx, destY: ny }
+        });
+      });
+    });
+
+    // Action Button Clicks
+    const btnTactMove = document.getElementById('btn-tact-move');
+    if (btnTactMove) {
+      btnTactMove.addEventListener('click', () => {
+        if (!selectedTargetCoord) {
+          alert('Wähle zuerst ein Zielfeld auf der Mini-Karte!');
+          return;
+        }
+        sendPlayerMessage({
+          type: 'TACTICAL_MOVE',
+          payload: { destX: selectedTargetCoord.x, destY: selectedTargetCoord.y }
+        });
+      });
+    }
+
+    const btnTactPush = document.getElementById('btn-tact-push');
+    if (btnTactPush) {
+      btnTactPush.addEventListener('click', () => {
+        if (!selectedTargetCoord) {
+          alert('Wähle zuerst das Zielfeld auf der Mini-Karte!');
+          return;
+        }
+        sendPlayerMessage({
+          type: 'TACTICAL_ACTION',
+          payload: {
+            actionType: 'MELEE_PUSH',
+            targetX: selectedTargetCoord.x,
+            targetY: selectedTargetCoord.y
+          }
+        });
+      });
+    }
+
+    const btnTactSpecial = document.getElementById('btn-tact-special');
+    if (btnTactSpecial) {
+      btnTactSpecial.addEventListener('click', () => {
+        if (!selectedTargetCoord) {
+          alert('Wähle zuerst das Zielfeld auf der Mini-Karte!');
+          return;
+        }
+        sendPlayerMessage({
+          type: 'TACTICAL_ACTION',
+          payload: {
+            actionType: 'SPECIAL_ABILITY',
+            targetX: selectedTargetCoord.x,
+            targetY: selectedTargetCoord.y
+          }
+        });
+      });
+    }
+
+    const btnTactPass = document.getElementById('btn-tact-pass');
+    if (btnTactPass) {
+      btnTactPass.addEventListener('click', () => {
+        alert('Zug beendet! Warte auf die Ausführung...');
+        const btnSpecial = document.getElementById('btn-tact-special');
+        const btnPush = document.getElementById('btn-tact-push');
+        const btnMove = document.getElementById('btn-tact-move');
+        if (btnSpecial) btnSpecial.disabled = true;
+        if (btnPush) btnPush.disabled = true;
+        if (btnMove) btnMove.disabled = true;
+      });
+    }
 
     // Step 4: Gamepad Turn State Handling
     function handleRaceStateUpdate(payload) {

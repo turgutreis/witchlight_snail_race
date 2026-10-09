@@ -7,8 +7,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <script type="module" crossorigin src="/assets/index-6Srb-ZZ_.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-CiQR-wxL.css">
+  <script type="module" crossorigin src="/assets/index-Bh1dZ81E.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-DiEnSkYd.css">
 </head>
 <body>
   <!-- 3D Canvas container -->
@@ -16,6 +16,16 @@
 
   <!-- UI Overlay System (Pure Host / DM Display) -->
   <div id="ui-overlay">
+
+    <!-- MODE SWITCHER PILL (RACE vs TACTICAL COMBAT) -->
+    <div class="mode-toggle-bar">
+      <button id="btn-mode-race" class="mode-toggle-btn active">
+        <span>🏁 Schneckenrennen</span>
+      </button>
+      <button id="btn-mode-tactical" class="mode-toggle-btn">
+        <span>⚔️ Taktischer Kampf [M]</span>
+      </button>
+    </div>
 
     <!-- 1. START LOBBY OVERLAY (DM / TV SCREEN) -->
     <div id="start-lobby" class="screen active">
@@ -85,6 +95,32 @@
         </button>
         <button id="btn-toggle-editor" class="small-btn">
           🛠️ Pfad-Editor [E]
+        </button>
+      </div>
+    </div>
+
+    <!-- 2b. TACTICAL COMBAT HUD (INTO THE BREACH MODE) -->
+    <div id="tactical-hud" class="hud-layer hidden" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;">
+      <!-- Top Center: Round & Carnival Power -->
+      <div class="hud-panel glass-panel" style="position: absolute; top: 16px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 24px; padding: 12px 28px; border: 2px solid rgba(251, 191, 36, 0.6); pointer-events: auto;">
+        <div style="text-align: center;">
+          <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; font-weight: 800;">Runde:</div>
+          <div id="tact-round-display" style="font-family: var(--font-title); font-size: 1.3rem; font-weight: 900; color: #fbbf24;">Runde 1 / 4</div>
+        </div>
+        <div style="width: 2px; height: 36px; background: rgba(255,255,255,0.2);"></div>
+        <div style="text-align: center;">
+          <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; font-weight: 800;">🎪 Jahrmarkt-Energie:</div>
+          <div id="tact-power-display" style="font-family: var(--font-title); font-size: 1.3rem; font-weight: 900; color: #38bdf8;">⚡⚡⚡⚡⚡⚡ (6/6)</div>
+        </div>
+      </div>
+
+      <!-- Bottom Center: Phase Status Banner & DM Execution Button -->
+      <div class="hud-panel glass-panel" style="position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 16px 32px; border-radius: 20px; border: 2px solid rgba(139, 92, 246, 0.6); pointer-events: auto;">
+        <div id="tact-phase-display" style="font-family: var(--font-title); font-size: 1.3rem; font-weight: 900; color: #fff;">
+          🛡️ SPIELER-PHASE: Führe Aktionen am Smartphone aus!
+        </div>
+        <button id="btn-tact-exec-enemies" class="primary-btn pulse-glow" style="padding: 10px 24px; font-size: 1rem;">
+          ⏭️ RUNDE BEENDEN & GEGNER AUSFÜHREN
         </button>
       </div>
     </div>

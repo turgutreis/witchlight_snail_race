@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { TrackManager } from './track.js';
 import { Snail } from './snail.js';
 import { audioSystem } from './audio.js';
+import { TacticalCombatManager } from './tactical.js';
 import Peer from 'peerjs';
 import QRCode from 'qrcode';
 
@@ -9,6 +10,9 @@ class GameEngine {
   constructor() {
     this.container = document.getElementById('canvas-container');
     this.scene = new THREE.Scene();
+
+    // Mode: 'RACE' or 'TACTICAL'
+    this.gameMode = 'RACE';
 
     // Game States: 'LOBBY', 'RACING', 'FINISHED'
     this.gameState = 'LOBBY';
@@ -60,6 +64,9 @@ class GameEngine {
     this.editorMode = false;
     this.draggedHandleIndex = -1;
 
+    // Tactical Combat Manager (Into the Breach Mode)
+    this.tacticalManager = new TacticalCombatManager(this);
+
     // Initialize Server API, Background Map, UI, Inputs & Snails
     this.initServerAndWebSocket();
     this.loadBackgroundMap();
@@ -95,11 +102,109 @@ class GameEngine {
         const planeMat = new THREE.MeshBasicMaterial({ map: texture });
         const bgMesh = new THREE.Mesh(planeGeom, planeMat);
         bgMesh.position.set(0, 0, 0);
+        this.bgMesh = bgMesh;
         this.scene.add(bgMesh);
       },
       undefined,
       (err) => console.warn('Could not load background texture:', err)
     );
+  }
+
+  getTakenSnailsMap() {
+    const map = {};
+    for (const [pId, snail] of this.remotePlayers) {
+      if (snail && snail.colorKey) {
+        map[snail.colorKey] = snail.playerName || 'Spieler';
+      }
+    }
+    return map;
+  }
+
+  broadcastTakenSnails() {
+    const takenSnails = this.getTakenSnailsMap();
+    const msg = {
+      type: 'ROOM_PLAYERS_UPDATE',
+      payload: { takenSnails }
+    };
+    this.peerConnections.forEach((conn) => {
+      if (conn && conn.open) {
+        try { conn.send(msg); } catch (e) {}
+      }
+    });
+  }
+
+  setGameMode(mode) {
+    if (this.gameMode === mode) return;
+    this.gameMode = mode;
+    console.log('Switching Game Mode to:', mode);
+
+    const btnRace = document.getElementById('btn-mode-race');
+    const btnTactical = document.getElementById('btn-mode-tactical');
+    const tactHud = document.getElementById('tactical-hud');
+    const raceHud = document.getElementById('game-hud');
+    const lobbyScreen = document.getElementById('start-lobby');
+
+    if (mode === 'TACTICAL') {
+      btnRace?.classList.remove('active');
+      btnTactical?.classList.add('active');
+
+      // Hide Race 2D Elements
+      if (this.bgMesh) this.bgMesh.visible = false;
+      if (this.trackManager?.trackGroup) this.trackManager.trackGroup.visible = false;
+      this.snails.forEach(s => s.group.visible = false);
+
+      // Hide race HUD / lobby, show tactical HUD
+      raceHud?.classList.add('hidden');
+      lobbyScreen?.classList.add('hidden');
+      tactHud?.classList.remove('hidden');
+
+      // Start Tactical Combat
+      this.tacticalManager.startTacticalBattle();
+    } else {
+      btnTactical?.classList.remove('active');
+      btnRace?.classList.add('active');
+
+      // Show Race 2D Elements
+      if (this.bgMesh) this.bgMesh.visible = true;
+      if (this.trackManager?.trackGroup) this.trackManager.trackGroup.visible = true;
+      this.snails.forEach(s => s.group.visible = true);
+
+      // Hide tactical HUD
+      tactHud?.classList.add('hidden');
+      if (this.gameState === 'RACING') {
+        raceHud?.classList.remove('hidden');
+      } else {
+        lobbyScreen?.classList.remove('hidden');
+      }
+
+      // Stop Tactical Combat
+      this.tacticalManager.stopTacticalBattle();
+    }
+
+    // Broadcast mode change to controllers
+    this.broadcastModeChange(mode);
+  }
+
+  broadcastModeChange(mode) {
+    const msg = {
+      type: 'MODE_CHANGED',
+      payload: { mode }
+    };
+
+    // 1. PeerJS WebRTC
+    this.peerConnections.forEach((conn) => {
+      if (conn && conn.open) {
+        try { conn.send(msg); } catch (e) {}
+      }
+    });
+
+    // 2. Bun WebSocket
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({
+        type: 'HOST_CHANGE_MODE',
+        payload: { mode }
+      }));
+    }
   }
 
   async updateRoomDisplayAndQR() {
@@ -181,6 +286,7 @@ class GameEngine {
               payload: { playerId: conn.playerId }
             });
             this.peerConnections.delete(conn.playerId);
+            this.broadcastTakenSnails();
           }
         });
 
@@ -220,14 +326,31 @@ class GameEngine {
         isStunned: false
       };
 
-      // Confirm join back to smartphone controller
+      // Confirm join back to smartphone controller (with currently taken snails)
       conn.send({
         type: 'JOINED_SUCCESS',
-        payload: { playerId, roomCode: this.roomCode, player: playerInfo }
+        payload: {
+          playerId,
+          roomCode: this.roomCode,
+          player: playerInfo,
+          takenSnails: this.getTakenSnailsMap()
+        }
       });
 
       // Register player in host game engine
       this.onRemotePlayerConnected(playerInfo);
+
+      // If tactical mode is active, sync mode and state immediately
+      if (this.gameMode === 'TACTICAL') {
+        conn.send({
+          type: 'MODE_CHANGED',
+          payload: { mode: 'TACTICAL' }
+        });
+        conn.send({
+          type: 'TACTICAL_STATE_UPDATE',
+          payload: this.tacticalManager.getSerializedState()
+        });
+      }
 
       // If race is already running, sync state
       if (this.gameState === 'RACING') {
@@ -250,6 +373,24 @@ class GameEngine {
 
     if (type === 'PLAYER_SELECT_COLOR') {
       const { colorKey } = payload;
+
+      // Check if snail is already taken by another player
+      let alreadyTakenBy = null;
+      for (const [pId, snail] of this.remotePlayers) {
+        if (pId !== conn.playerId && snail && snail.colorKey === colorKey) {
+          alreadyTakenBy = snail.playerName || 'Ein anderer Spieler';
+          break;
+        }
+      }
+
+      if (alreadyTakenBy) {
+        conn.send({
+          type: 'ERROR',
+          payload: { message: `Diese Schnecke ist bereits vergeben an "${alreadyTakenBy}"!` }
+        });
+        return;
+      }
+
       conn.send({
         type: 'COLOR_SELECTED_SUCCESS',
         payload: { colorKey }
@@ -258,6 +399,7 @@ class GameEngine {
         type: 'PLAYER_COLOR_CHANGED',
         payload: { playerId: conn.playerId, colorKey }
       });
+      this.broadcastTakenSnails();
       return;
     }
 
@@ -281,6 +423,28 @@ class GameEngine {
           spellId: payload.spellId
         }
       });
+      return;
+    }
+
+    // TACTICAL MODE MESSAGES
+    if (type === 'TACTICAL_MOVE') {
+      const res = this.tacticalManager.handlePlayerMove(conn.playerId, payload.destX, payload.destY);
+      if (res && !res.ok) {
+        conn.send({ type: 'ERROR', payload: { message: res.msg } });
+      }
+      return;
+    }
+
+    if (type === 'TACTICAL_ACTION') {
+      const res = this.tacticalManager.handlePlayerAction(conn.playerId, payload.actionType, payload.targetX, payload.targetY);
+      if (res && !res.ok) {
+        conn.send({ type: 'ERROR', payload: { message: res.msg } });
+      }
+      return;
+    }
+
+    if (type === 'TACTICAL_EXEC_ENEMIES') {
+      this.tacticalManager.executeEnemyPhase();
       return;
     }
   }
@@ -399,6 +563,7 @@ class GameEngine {
         targetSnail.group.add(targetSnail.labelSprite);
       }
       this.renderRosterUI();
+      this.broadcastTakenSnails();
     } else if (type === 'PLAYER_ROLL_D20') {
       const remoteSnail = this.remotePlayers.get(payload.playerId);
       if (remoteSnail && this.gameState === 'RACING') {
@@ -428,6 +593,13 @@ class GameEngine {
       }
       this.connectedPlayerData.delete(payload.playerId);
       this.renderRosterUI();
+      this.broadcastTakenSnails();
+    } else if (type === 'TACTICAL_MOVE') {
+      this.tacticalManager.handlePlayerMove(payload.playerId, payload.destX, payload.destY);
+    } else if (type === 'TACTICAL_ACTION') {
+      this.tacticalManager.handlePlayerAction(payload.playerId, payload.actionType, payload.targetX, payload.targetY);
+    } else if (type === 'TACTICAL_EXEC_ENEMIES') {
+      this.tacticalManager.executeEnemyPhase();
     }
   }
 
@@ -524,11 +696,32 @@ class GameEngine {
       });
     }
 
+    // Mode Switcher Controls (Race vs Tactical Mode)
+    const btnModeRace = document.getElementById('btn-mode-race');
+    const btnModeTactical = document.getElementById('btn-mode-tactical');
+    if (btnModeRace) {
+      btnModeRace.addEventListener('click', () => this.setGameMode('RACE'));
+    }
+    if (btnModeTactical) {
+      btnModeTactical.addEventListener('click', () => this.setGameMode('TACTICAL'));
+    }
+
+    // Tactical Execution Button (DM TV Screen)
+    const btnExecEnemies = document.getElementById('btn-tact-exec-enemies');
+    if (btnExecEnemies) {
+      btnExecEnemies.addEventListener('click', () => {
+        this.tacticalManager.executeEnemyPhase();
+      });
+    }
+
     window.addEventListener('keydown', (e) => {
       if (e.key === 'e' || e.key === 'E') {
         toggleEditor();
       } else if (e.key === 'g' || e.key === 'G') {
         this.trackManager.toggleGrid();
+      } else if (e.key === 'm' || e.key === 'M') {
+        // Toggle Game Mode with [M]
+        this.setGameMode(this.gameMode === 'RACE' ? 'TACTICAL' : 'RACE');
       }
     });
   }
@@ -787,6 +980,12 @@ class GameEngine {
     requestAnimationFrame(this.animate);
 
     const delta = 0.016; // ~60 FPS delta
+
+    if (this.gameMode === 'TACTICAL') {
+      this.tacticalManager.update(delta, time);
+      this.renderer.render(this.scene, this.tacticalManager.tacticalCamera);
+      return;
+    }
 
     if (this.gameState === 'RACING') {
       this.snails.forEach(s => s.update(delta, time, true));

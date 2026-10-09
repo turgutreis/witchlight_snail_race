@@ -110,10 +110,16 @@ const app = new Elysia()
 
           room.players.set(playerId, playerInfo);
 
+          // Build current map of taken snails
+          const takenMap = {};
+          for (const [pId, pInfo] of room.players) {
+            if (pInfo.colorKey) takenMap[pInfo.colorKey] = pInfo.name;
+          }
+
           // Confirm join to controller
           ws.send({
             type: 'JOINED_SUCCESS',
-            payload: { playerId, roomCode: cleanCode, player: playerInfo }
+            payload: { playerId, roomCode: cleanCode, player: playerInfo, takenSnails: takenMap }
           });
 
           // Notify Host screen
@@ -124,11 +130,28 @@ const app = new Elysia()
           return;
         }
 
-        // 3. PLAYER SELECTS COLOR
+        // 3. PLAYER SELECTS COLOR (with locking)
         if (type === 'PLAYER_SELECT_COLOR') {
           const { colorKey } = payload;
           const room = rooms.get(ws.data.roomId);
           if (room && ws.data.playerId) {
+            // Check if snail is already taken by another player
+            let alreadyTakenBy = null;
+            for (const [pId, pInfo] of room.players) {
+              if (pId !== ws.data.playerId && pInfo.colorKey === colorKey) {
+                alreadyTakenBy = pInfo.name;
+                break;
+              }
+            }
+
+            if (alreadyTakenBy) {
+              ws.send({
+                type: 'ERROR',
+                payload: { message: `Diese Schnecke ist bereits von "${alreadyTakenBy}" gewählt!` }
+              });
+              return;
+            }
+
             const player = room.players.get(ws.data.playerId);
             if (player) {
               player.colorKey = colorKey;
@@ -142,6 +165,16 @@ const app = new Elysia()
                 type: 'PLAYER_COLOR_CHANGED',
                 payload: { playerId: ws.data.playerId, colorKey }
               });
+
+              // Broadcast updated taken snails to all room controllers
+              const takenMap = {};
+              for (const [pId, pInfo] of room.players) {
+                if (pInfo.colorKey) takenMap[pInfo.colorKey] = pInfo.name;
+              }
+              app.server.publish(ws.data.roomId, JSON.stringify({
+                type: 'ROOM_PLAYERS_UPDATE',
+                payload: { takenSnails: takenMap }
+              }));
             }
           }
           return;
@@ -186,12 +219,36 @@ const app = new Elysia()
           return;
         }
 
+        // 4d. TACTICAL COMBAT ACTIONS FROM CONTROLLER
+        if (type === 'TACTICAL_DEPLOY' || type === 'TACTICAL_ACTION' || type === 'TACTICAL_END_TURN') {
+          const room = rooms.get(ws.data.roomId);
+          if (room && ws.data.playerId) {
+            room.hostWs.send({
+              type: type,
+              payload: { ...payload, playerId: ws.data.playerId }
+            });
+          }
+          return;
+        }
+
         // 5. HOST BROADCASTS RACE STATE TO CONTROLLERS
         if (type === 'HOST_SYNC_RACE_STATE') {
           const room = rooms.get(ws.data.roomId);
           if (room && ws.data.isHost) {
             app.server.publish(ws.data.roomId, JSON.stringify({
               type: 'RACE_STATE_UPDATE',
+              payload: payload
+            }));
+          }
+          return;
+        }
+
+        // 5b. HOST BROADCASTS TACTICAL STATE & MODE
+        if (type === 'HOST_SYNC_TACTICAL_STATE' || type === 'HOST_CHANGE_MODE') {
+          const room = rooms.get(ws.data.roomId);
+          if (room && ws.data.isHost) {
+            app.server.publish(ws.data.roomId, JSON.stringify({
+              type: type === 'HOST_CHANGE_MODE' ? 'MODE_CHANGED' : 'TACTICAL_STATE_UPDATE',
               payload: payload
             }));
           }
@@ -220,6 +277,16 @@ const app = new Elysia()
               type: 'PLAYER_DISCONNECTED',
               payload: { playerId: ws.data.playerId }
             });
+
+            // Broadcast updated taken snails
+            const takenMap = {};
+            for (const [pId, pInfo] of room.players) {
+              if (pInfo.colorKey) takenMap[pInfo.colorKey] = pInfo.name;
+            }
+            app.server.publish(ws.data.roomId, JSON.stringify({
+              type: 'ROOM_PLAYERS_UPDATE',
+              payload: { takenSnails: takenMap }
+            }));
           }
         }
       }
