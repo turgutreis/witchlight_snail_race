@@ -36,6 +36,19 @@ class GameEngine {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.container.appendChild(this.renderer.domElement);
 
+    // DM Raycaster Interactions for Tactical Battlemap
+    this.renderer.domElement.addEventListener('pointermove', (e) => {
+      if (this.gameMode === 'TACTICAL') {
+        this.tacticalManager.handleCanvasPointerMove(e);
+      }
+    });
+
+    this.renderer.domElement.addEventListener('click', (e) => {
+      if (this.gameMode === 'TACTICAL') {
+        this.tacticalManager.handleCanvasClick(e);
+      }
+    });
+
     // Track Manager
     this.trackManager = new TrackManager(this.scene);
 
@@ -467,25 +480,60 @@ class GameEngine {
       return;
     }
 
-    // TACTICAL MODE MESSAGES
+    // TACTICAL D&D BATTLEMAP MESSAGES
+    if (type === 'TACTICAL_DEPLOY') {
+      this.tacticalManager.deployPlayerCharacter(
+        conn.playerId,
+        payload.playerName,
+        payload.classKey,
+        payload.x,
+        payload.y
+      );
+      return;
+    }
+
     if (type === 'TACTICAL_MOVE') {
-      const res = this.tacticalManager.handlePlayerMove(conn.playerId, payload.destX, payload.destY);
-      if (res && !res.ok) {
-        conn.send({ type: 'ERROR', payload: { message: res.msg } });
+      const unit = this.tacticalManager.units.find(u => u.id === conn.playerId);
+      if (unit) {
+        this.tacticalManager.moveUnit(unit, payload.destX, payload.destY);
       }
       return;
     }
 
     if (type === 'TACTICAL_ACTION') {
-      const res = this.tacticalManager.handlePlayerAction(conn.playerId, payload.actionType, payload.targetX, payload.targetY);
-      if (res && !res.ok) {
-        conn.send({ type: 'ERROR', payload: { message: res.msg } });
+      const { actionType, targetId, dirX, dirY, dice } = payload;
+      const actor = this.tacticalManager.units.find(u => u.id === conn.playerId);
+      const target = this.tacticalManager.units.find(u => u.id === targetId);
+
+      if (actionType === 'PUSH') {
+        if (target) {
+          this.tacticalManager.pushUnit(target, dirX || 0, dirY || -1);
+        }
+      } else if (actionType === 'ATTACK') {
+        if (target) {
+          const dmg = Math.floor(Math.random() * 8) + 3;
+          this.tacticalManager.applyDamage(target, dmg);
+        }
+      } else if (actionType === 'HEAL') {
+        const healAmt = Math.floor(Math.random() * 8) + 2;
+        if (target) {
+          this.tacticalManager.applyHeal(target, healAmt);
+        } else if (actor) {
+          this.tacticalManager.applyHeal(actor, healAmt);
+        }
       }
       return;
     }
 
-    if (type === 'TACTICAL_EXEC_ENEMIES') {
-      this.tacticalManager.executeEnemyPhase();
+    if (type === 'TACTICAL_HP_CHANGE') {
+      const unit = this.tacticalManager.units.find(u => u.id === conn.playerId);
+      if (unit) {
+        if (payload.delta < 0) {
+          this.tacticalManager.applyDamage(unit, Math.abs(payload.delta));
+        } else {
+          this.tacticalManager.applyHeal(unit, payload.delta);
+        }
+      }
       return;
     }
   }
@@ -635,12 +683,50 @@ class GameEngine {
       this.connectedPlayerData.delete(payload.playerId);
       this.renderRosterUI();
       this.broadcastTakenSnails();
+    } else if (type === 'TACTICAL_DEPLOY') {
+      this.tacticalManager.deployPlayerCharacter(
+        payload.playerId,
+        payload.playerName,
+        payload.classKey,
+        payload.x,
+        payload.y
+      );
     } else if (type === 'TACTICAL_MOVE') {
-      this.tacticalManager.handlePlayerMove(payload.playerId, payload.destX, payload.destY);
+      const unit = this.tacticalManager.units.find(u => u.id === payload.playerId);
+      if (unit) {
+        this.tacticalManager.moveUnit(unit, payload.destX, payload.destY);
+      }
     } else if (type === 'TACTICAL_ACTION') {
-      this.tacticalManager.handlePlayerAction(payload.playerId, payload.actionType, payload.targetX, payload.targetY);
-    } else if (type === 'TACTICAL_EXEC_ENEMIES') {
-      this.tacticalManager.executeEnemyPhase();
+      const { actionType, targetId, dirX, dirY, dice } = payload;
+      const actor = this.tacticalManager.units.find(u => u.id === payload.playerId);
+      const target = this.tacticalManager.units.find(u => u.id === targetId);
+
+      if (actionType === 'PUSH') {
+        if (target) {
+          this.tacticalManager.pushUnit(target, dirX || 0, dirY || -1);
+        }
+      } else if (actionType === 'ATTACK') {
+        if (target) {
+          const dmg = Math.floor(Math.random() * 8) + 3;
+          this.tacticalManager.applyDamage(target, dmg);
+        }
+      } else if (actionType === 'HEAL') {
+        const healAmt = Math.floor(Math.random() * 8) + 2;
+        if (target) {
+          this.tacticalManager.applyHeal(target, healAmt);
+        } else if (actor) {
+          this.tacticalManager.applyHeal(actor, healAmt);
+        }
+      }
+    } else if (type === 'TACTICAL_HP_CHANGE') {
+      const unit = this.tacticalManager.units.find(u => u.id === payload.playerId);
+      if (unit) {
+        if (payload.delta < 0) {
+          this.tacticalManager.applyDamage(unit, Math.abs(payload.delta));
+        } else {
+          this.tacticalManager.applyHeal(unit, payload.delta);
+        }
+      }
     }
   }
 
@@ -747,17 +833,100 @@ class GameEngine {
       btnModeTactical.addEventListener('click', () => this.setGameMode('TACTICAL'));
     }
 
-    // Tactical Execution Button (DM TV Screen)
-    const btnExecEnemies = document.getElementById('btn-tact-exec-enemies');
-    if (btnExecEnemies) {
-      btnExecEnemies.addEventListener('click', () => {
-        if (this.tacticalManager.phase === 'VICTORY' || this.tacticalManager.phase === 'DEFEAT') {
-          this.tacticalManager.startTacticalBattle();
-        } else {
-          this.tacticalManager.executeEnemyPhase();
-        }
+    // Tactical Combat DM Toolbar Controls
+    const toolPlace = document.getElementById('tool-mode-place');
+    const toolMove = document.getElementById('tool-mode-move');
+    const toolRemove = document.getElementById('tool-mode-remove');
+    const monsterPaletteBar = document.getElementById('monster-palette-bar');
+
+    const updateToolButtons = (mode) => {
+      this.tacticalManager.dmToolMode = mode;
+      [toolPlace, toolMove, toolRemove].forEach(btn => {
+        if (!btn) return;
+        btn.classList.remove('active');
+        btn.style.background = 'rgba(255,255,255,0.08)';
+        btn.style.borderColor = 'rgba(255,255,255,0.2)';
+        btn.style.color = '#cbd5e1';
       });
-    }
+
+      if (mode === 'PLACE_MONSTER' && toolPlace) {
+        toolPlace.classList.add('active');
+        toolPlace.style.background = '#8b5cf6';
+        toolPlace.style.borderColor = '#a855f7';
+        toolPlace.style.color = '#fff';
+        if (monsterPaletteBar) monsterPaletteBar.style.display = 'flex';
+      } else if (mode === 'SELECT_MOVE' && toolMove) {
+        toolMove.classList.add('active');
+        toolMove.style.background = '#3b82f6';
+        toolMove.style.borderColor = '#60a5fa';
+        toolMove.style.color = '#fff';
+        if (monsterPaletteBar) monsterPaletteBar.style.display = 'none';
+      } else if (mode === 'REMOVE' && toolRemove) {
+        toolRemove.classList.add('active');
+        toolRemove.style.background = '#ef4444';
+        toolRemove.style.borderColor = '#f87171';
+        toolRemove.style.color = '#fff';
+        if (monsterPaletteBar) monsterPaletteBar.style.display = 'none';
+      }
+    };
+
+    if (toolPlace) toolPlace.addEventListener('click', () => updateToolButtons('PLACE_MONSTER'));
+    if (toolMove) toolMove.addEventListener('click', () => updateToolButtons('SELECT_MOVE'));
+    if (toolRemove) toolRemove.addEventListener('click', () => updateToolButtons('REMOVE'));
+
+    // Monster palette selection
+    document.querySelectorAll('.monster-pick-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.monster-pick-btn').forEach(b => {
+          b.classList.remove('active');
+          b.style.borderColor = 'rgba(255,255,255,0.2)';
+        });
+        btn.classList.add('active');
+        btn.style.borderColor = '#fbbf24';
+        this.tacticalManager.selectedMonsterType = btn.dataset.type;
+      });
+    });
+
+    // Selected Unit Actions
+    document.getElementById('btn-dm-dmg-1')?.addEventListener('click', () => {
+      if (this.tacticalManager.selectedUnit) {
+        this.tacticalManager.applyDamage(this.tacticalManager.selectedUnit, 1);
+      }
+    });
+
+    document.getElementById('btn-dm-dmg-5')?.addEventListener('click', () => {
+      if (this.tacticalManager.selectedUnit) {
+        this.tacticalManager.applyDamage(this.tacticalManager.selectedUnit, 5);
+      }
+    });
+
+    document.getElementById('btn-dm-heal')?.addEventListener('click', () => {
+      if (this.tacticalManager.selectedUnit) {
+        this.tacticalManager.applyHeal(this.tacticalManager.selectedUnit, 5);
+      }
+    });
+
+    document.getElementById('btn-dm-delete')?.addEventListener('click', () => {
+      if (this.tacticalManager.selectedUnit) {
+        this.tacticalManager.removeUnit(this.tacticalManager.selectedUnit);
+        this.tacticalManager.updateTVHud();
+        this.tacticalManager.syncStateWithControllers();
+      }
+    });
+
+    // Round Tracker & Reset
+    document.getElementById('btn-tact-next-round')?.addEventListener('click', () => {
+      this.tacticalManager.currentRound++;
+      this.tacticalManager.showFloatingText(3, 3, `Runde ${this.tacticalManager.currentRound}`, '#fbbf24');
+      this.tacticalManager.updateTVHud();
+      this.tacticalManager.syncStateWithControllers();
+    });
+
+    document.getElementById('btn-tact-reset')?.addEventListener('click', () => {
+      if (confirm('D&D Gefecht zurücksetzen? Alle Einheiten werden vom Spielplan entfernt.')) {
+        this.tacticalManager.resetBattle();
+      }
+    });
 
     window.addEventListener('keydown', (e) => {
       if (e.key === 'e' || e.key === 'E') {

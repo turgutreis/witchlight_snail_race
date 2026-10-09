@@ -239,19 +239,47 @@
       border-color: #f59e0b !important;
     }
 
-    .tact-cell.has-water {
-      background: rgba(2, 132, 199, 0.4) !important;
-      border-color: #0284c7 !important;
+    .tact-cell.has-ally {
+      background: rgba(59, 130, 246, 0.35) !important;
+      border-color: #3b82f6 !important;
     }
 
-    .tact-cell.danger-telegraph {
-      border: 2px dashed #ef4444 !important;
-      animation: pulseCellDanger 1s infinite alternate;
+    .class-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin: 10px 0;
     }
 
-    @keyframes pulseCellDanger {
-      from { background: rgba(239, 68, 68, 0.2); }
-      to { background: rgba(239, 68, 68, 0.55); }
+    .class-card {
+      background: rgba(255, 255, 255, 0.06);
+      border: 2px solid rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      padding: 10px;
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .class-card.selected {
+      border-color: #fbbf24;
+      background: rgba(251, 191, 36, 0.15);
+      box-shadow: 0 0 10px rgba(251, 191, 36, 0.4);
+    }
+
+    .hp-badge-btn {
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: #fff;
+      border-radius: 8px;
+      padding: 4px 10px;
+      font-weight: 800;
+      font-size: 0.95rem;
+      cursor: pointer;
+    }
+
+    .hp-badge-btn:active {
+      transform: scale(0.92);
     }
 
     .tact-dpad {
@@ -584,39 +612,93 @@
     </div>
 
     <!-- ============================================== -->
-    <!-- SCREEN 5: TAKTISCHER KAMPF (INTO THE BREACH)   -->
+    <!-- SCREEN 5: D&D TAKTISCHER KAMPF (BATTLEMAP)     -->
     <!-- ============================================== -->
     <div id="screen-tactical" class="mobile-screen">
-      <div class="card-panel" style="padding: 14px; display: flex; flex-direction: column; gap: 10px;">
 
-        <!-- Header: Hero Name, HP, Role -->
+      <!-- 5A. SETUP & TOKEN PLATZIEREN (VOR DEM PLATZIEREN) -->
+      <div id="tact-setup-view" class="card-panel" style="padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+        <h2>⚔️ D&D Charakter</h2>
+        <p class="subtitle">Wähle deine Klasse und Startposition auf dem Schlachtfeld</p>
+
+        <div>
+          <label style="font-size: 0.75rem; color: #94a3b8; font-weight: 700; text-transform: uppercase;">Charakter-Name:</label>
+          <input id="tact-input-name" type="text" class="input-field" placeholder="Name..." maxlength="16" />
+        </div>
+
+        <div>
+          <label style="font-size: 0.75rem; color: #fbbf24; font-weight: 800; text-transform: uppercase;">D&D KLASSE WÄHLEN:</label>
+          <div class="class-grid" id="tact-class-picker">
+            <div class="class-card selected" data-class="KRIEGER" style="border-color: #3b82f6;">
+              <div style="font-size: 1.4rem;">🛡️</div>
+              <div style="font-weight: 800; color: #60a5fa; font-size: 0.85rem;">Krieger</div>
+              <div style="font-size: 0.75rem; color: #94a3b8;">14 LP • Hieb & Stoß</div>
+            </div>
+            <div class="class-card" data-class="MAGIER">
+              <div style="font-size: 1.4rem;">🔮</div>
+              <div style="font-weight: 800; color: #c084fc; font-size: 0.85rem;">Magier</div>
+              <div style="font-size: 0.75rem; color: #94a3b8;">8 LP • Feuerblitz</div>
+            </div>
+            <div class="class-card" data-class="SCHURKE">
+              <div style="font-size: 1.4rem;">🗡️</div>
+              <div style="font-weight: 800; color: #fbbf24; font-size: 0.85rem;">Schurke</div>
+              <div style="font-size: 0.75rem; color: #94a3b8;">10 LP • Hinterhalt</div>
+            </div>
+            <div class="class-card" data-class="KLERIKER">
+              <div style="font-size: 1.4rem;">✨</div>
+              <div style="font-weight: 800; color: #38bdf8; font-size: 0.85rem;">Kleriker</div>
+              <div style="font-size: 0.75rem; color: #94a3b8;">11 LP • Heilung</div>
+            </div>
+            <div class="class-card" data-class="WALDLAEUFER">
+              <div style="font-size: 1.4rem;">🏹</div>
+              <div style="font-weight: 800; color: #4ade80; font-size: 0.85rem;">Waldläufer</div>
+              <div style="font-size: 0.75rem; color: #94a3b8;">11 LP • Langbogen</div>
+            </div>
+            <div class="class-card" data-class="BARBAR">
+              <div style="font-size: 1.4rem;">🪓</div>
+              <div style="font-weight: 800; color: #f87171; font-size: 0.85rem;">Barbar</div>
+              <div style="font-size: 0.75rem; color: #94a3b8;">16 LP • Wut-Schlag</div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 700; text-transform: uppercase;">Startfeld auf 8x8 Karte wählen:</div>
+          <div id="tact-spawn-grid" class="tactical-grid-container"></div>
+          <div id="tact-spawn-info" style="font-size: 0.82rem; color: #fbbf24; font-weight: 800; margin-top: 4px;">Startposition: Feld (X: 3, Y: 1)</div>
+        </div>
+
+        <button id="btn-tact-deploy" class="btn-action" style="margin-top: 6px;">
+          🎯 AUF SCHLACHTFELD PLATZIEREN
+        </button>
+      </div>
+
+      <!-- 5B. IM GEFECHT (WENN TOKEN PLATZIERT IST) -->
+      <div id="tact-combat-view" class="card-panel" style="padding: 14px; display: none; flex-direction: column; gap: 10px;">
+        
+        <!-- Header Info Bar -->
         <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.4); padding: 10px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
           <div>
-            <div id="tact-player-title" style="font-weight: 800; font-size: 1rem; color: #fbbf24;">Charakter 🐌</div>
-            <div id="tact-player-role" style="font-size: 0.75rem; color: #94a3b8; font-weight: 700;">Rolle: Krieger</div>
+            <div id="tact-active-char-name" style="font-weight: 800; font-size: 1.05rem; color: #fbbf24;">🛡️ Held</div>
+            <div id="tact-active-class-title" style="font-size: 0.75rem; color: #94a3b8; font-weight: 700;">Krieger</div>
           </div>
-          <div style="text-align: right;">
-            <div id="tact-player-hp" style="font-weight: 900; font-size: 1.1rem; color: #ef4444;">❤️❤️❤️</div>
-            <div id="tact-carnival-power" style="font-size: 0.72rem; color: #38bdf8; font-weight: 700;">🎪 Energie: 6/6</div>
+          <!-- HP Adjustment -->
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <button id="btn-tact-hp-minus" class="hp-badge-btn" style="background: rgba(239,68,68,0.3); border-color: #ef4444; color: #fca5a5;">-1</button>
+            <span id="tact-hp-display" style="font-weight: 900; font-size: 1.05rem; color: #ef4444; min-width: 90px; text-align: center;">❤️ 14/14</span>
+            <button id="btn-tact-hp-plus" class="hp-badge-btn" style="background: rgba(34,197,94,0.3); border-color: #22c55e; color: #86efac;">+1</button>
           </div>
         </div>
 
-        <!-- Threat Alert Banner -->
-        <div id="tact-threat-banner" style="display: none; padding: 8px 12px; background: rgba(239, 68, 68, 0.25); border: 1px solid #ef4444; border-radius: 10px; color: #fca5a5; font-size: 0.8rem; font-weight: 700; text-align: center;">
-          ⚠️ GEFAHR: Du stehst im Zielfeld eines Angriffs!
-        </div>
-
-        <!-- Tactical Mini Grid (8x8) -->
-        <div style="font-size: 0.8rem; color: #94a3b8; font-weight: 700; text-align: center;">
+        <!-- 8x8 Mini Grid -->
+        <div style="font-size: 0.78rem; color: #94a3b8; font-weight: 700; text-align: center;">
           Tippe auf ein Feld zum Zielen / Bewegen:
         </div>
-        <div id="tactical-mini-grid" class="tactical-grid-container">
-          <!-- 64 cells generated dynamically -->
-        </div>
+        <div id="tactical-mini-grid" class="tactical-grid-container"></div>
 
-        <!-- Selected Tile Info -->
-        <div id="tact-selected-info" style="font-size: 0.8rem; color: #fbbf24; font-weight: 700; text-align: center;">
-          Gewähltes Feld: (Keins)
+        <!-- Selected Tile / Target Info -->
+        <div id="tact-target-banner" style="font-size: 0.85rem; color: #fbbf24; font-weight: 800; text-align: center; background: rgba(0,0,0,0.35); padding: 8px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1);">
+          🎯 Ziel: Feld (Keins)
         </div>
 
         <!-- Directional D-Pad for 1-Step Move -->
@@ -634,18 +716,22 @@
           <button id="btn-tact-move" class="tact-action-btn" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);">
             <span>🏃 ZU GEWÄHLTEM FELD BEWEGEN</span>
           </button>
-          <button id="btn-tact-push" class="tact-action-btn" style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);">
-            <span>💥 STOSS-SCHLAG (1 DMG + 1 FELD STOSS)</span>
+          <button id="btn-tact-attack" class="tact-action-btn" style="background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);">
+            <span id="tact-btn-attack-text">⚔️ NAHKAMPF-ANGRIFF</span>
+          </button>
+          <button id="btn-tact-push" class="tact-action-btn" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+            <span>💨 STOSSEN (1 FELD NACH HINTEN)</span>
           </button>
           <button id="btn-tact-special" class="tact-action-btn" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">
-            <span>🎯 SPEZIAL-FÄHIGKEIT</span>
+            <span id="tact-btn-special-text">✨ SPEZIAL / ZAUBER</span>
           </button>
-          <button id="btn-tact-pass" class="tact-action-btn" style="background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); color: #cbd5e1;">
-            <span>⏭️ MEINEN ZUG BEENDEN</span>
+          <button id="btn-tact-redeploy" class="tact-action-btn" style="background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.2); font-size: 0.8rem; padding: 8px; color: #94a3b8;">
+            <span>🔄 Token neu platzieren</span>
           </button>
         </div>
 
       </div>
+
     </div>
 
   </div>
@@ -869,6 +955,8 @@
       } else if (type === 'MODE_CHANGED') {
         if (payload.mode === 'TACTICAL') {
           showScreen('screen-tactical');
+          if (currentTacticalState) handleTacticalStateUpdate(currentTacticalState);
+          else renderTacticalSpawnGrid();
         } else if (payload.mode === 'RACE') {
           if (myChosenSnailKey) showScreen('screen-waiting-host');
           else showScreen('screen-select-snail');
@@ -935,50 +1023,163 @@
     });
 
     // ==============================================
-    // TACTICAL COMBAT CONTROLLER HANDLERS
+    // D&D TACTICAL BATTLEMAP CONTROLLER HANDLERS
     // ==============================================
+    const DND_CLASSES_DATA = {
+      KRIEGER: { name: 'Krieger (Fighter)', icon: '🛡️', hp: 14, color: '#3b82f6', attackName: '⚔️ Nahkampf-Hieb (1d8+3)', specialName: '🛡️ Defensiv-Haltung' },
+      MAGIER: { name: 'Magier (Wizard)', icon: '🔮', hp: 8, color: '#8b5cf6', attackName: '🔥 Feuerblitz (1d10)', specialName: '💨 Windstoß (Fern-Stoß)' },
+      SCHURKE: { name: 'Schurke (Rogue)', icon: '🗡️', hp: 10, color: '#f59e0b', attackName: '🗡️ Hinterhalt (2d6)', specialName: '💨 Trick-Stoß' },
+      KLERIKER: { name: 'Kleriker (Cleric)', icon: '✨', hp: 11, color: '#06b6d4', attackName: '✨ Heilige Flamme (1d8)', specialName: '💚 Heilung (1d8+2)' },
+      WALDLAEUFER: { name: 'Waldläufer (Ranger)', icon: '🏹', hp: 11, color: '#22c55e', attackName: '🏹 Langbogen (1d8+2)', specialName: '🎯 Stoß-Pfeil' },
+      BARBAR: { name: 'Barbar (Barbarian)', icon: '🪓', hp: 16, color: '#ef4444', attackName: '🪓 Wut-Schlag (1d12+3)', specialName: '💥 Rammbock-Stoß' }
+    };
+
+    let chosenTacticalClass = 'KRIEGER';
+    let chosenSpawnCoord = { x: 3, y: 1 };
+    let selectedCombatCoord = null;
+
+    // Setup: Class picker cards
+    document.querySelectorAll('#tact-class-picker .class-card').forEach(card => {
+      card.addEventListener('click', () => {
+        document.querySelectorAll('#tact-class-picker .class-card').forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        chosenTacticalClass = card.dataset.class;
+      });
+    });
+
+    // Setup: Spawn grid
+    function renderTacticalSpawnGrid() {
+      const gridEl = document.getElementById('tact-spawn-grid');
+      if (!gridEl) return;
+      gridEl.innerHTML = '';
+
+      for (let y = 7; y >= 0; y--) {
+        for (let x = 0; x < 8; x++) {
+          const cell = document.createElement('div');
+          cell.className = 'tact-cell';
+          cell.dataset.x = x;
+          cell.dataset.y = y;
+
+          if (chosenSpawnCoord.x === x && chosenSpawnCoord.y === y) {
+            cell.classList.add('selected');
+            cell.innerText = '📍';
+          }
+
+          // Check if an existing unit is there
+          if (currentTacticalState && currentTacticalState.units) {
+            const occ = currentTacticalState.units.find(u => u.x === x && u.y === y);
+            if (occ) {
+              cell.innerText = occ.icon || '👤';
+              if (occ.isMonster) cell.classList.add('has-enemy');
+              else cell.classList.add('has-ally');
+            }
+          }
+
+          cell.addEventListener('click', () => {
+            chosenSpawnCoord = { x, y };
+            renderTacticalSpawnGrid();
+            const info = document.getElementById('tact-spawn-info');
+            if (info) info.innerText = `Startposition: Feld (X: ${x}, Y: ${y})`;
+          });
+
+          gridEl.appendChild(cell);
+        }
+      }
+    }
+
+    // Setup: Deploy Button
+    const btnTactDeploy = document.getElementById('btn-tact-deploy');
+    if (btnTactDeploy) {
+      btnTactDeploy.addEventListener('click', () => {
+        const charName = document.getElementById('tact-input-name').value.trim() || myPlayerName || 'Held';
+        sendPlayerMessage({
+          type: 'TACTICAL_DEPLOY',
+          payload: {
+            playerId: myPlayerId,
+            playerName: charName,
+            classKey: chosenTacticalClass,
+            x: chosenSpawnCoord.x,
+            y: chosenSpawnCoord.y
+          }
+        });
+      });
+    }
+
+    // Redeploy button in combat view
+    const btnTactRedeploy = document.getElementById('btn-tact-redeploy');
+    if (btnTactRedeploy) {
+      btnTactRedeploy.addEventListener('click', () => {
+        document.getElementById('tact-combat-view').style.display = 'none';
+        document.getElementById('tact-setup-view').style.display = 'flex';
+        renderTacticalSpawnGrid();
+      });
+    }
+
+    // In-Combat: HP Adjustment Buttons
+    const btnHptMinus = document.getElementById('btn-tact-hp-minus');
+    if (btnHptMinus) {
+      btnHptMinus.addEventListener('click', () => {
+        sendPlayerMessage({
+          type: 'TACTICAL_HP_CHANGE',
+          payload: { playerId: myPlayerId, delta: -1 }
+        });
+      });
+    }
+
+    const btnHptPlus = document.getElementById('btn-tact-hp-plus');
+    if (btnHptPlus) {
+      btnHptPlus.addEventListener('click', () => {
+        sendPlayerMessage({
+          type: 'TACTICAL_HP_CHANGE',
+          payload: { playerId: myPlayerId, delta: 1 }
+        });
+      });
+    }
+
+    // Master function for receiving state from host
     function handleTacticalStateUpdate(state) {
       currentTacticalState = state;
 
-      // Find my hero unit (or first unit if spectator)
-      const myHero = state.players.find(p => p.id === myPlayerId) || state.players[0];
-      if (!myHero) return;
+      // Check if my character is currently on the board
+      const myHero = (state.units || []).find(u => u.id === myPlayerId);
 
-      // Update Header Info
-      document.getElementById('tact-player-title').innerText = `${myHero.name} (${myHero.role.icon})`;
-      document.getElementById('tact-player-role').innerText = `Rolle: ${myHero.role.name}`;
+      const setupView = document.getElementById('tact-setup-view');
+      const combatView = document.getElementById('tact-combat-view');
 
-      let hearts = '';
-      for (let i = 0; i < myHero.maxHp; i++) {
-        hearts += (i < myHero.hp ? '❤️' : '🖤');
-      }
-      document.getElementById('tact-player-hp').innerText = hearts;
-      document.getElementById('tact-carnival-power').innerText = `🎪 Energie: ${state.carnivalPower}/${state.maxCarnivalPower}`;
+      if (!myHero) {
+        // Player has not yet placed token or was deleted by DM
+        if (setupView) setupView.style.display = 'flex';
+        if (combatView) combatView.style.display = 'none';
 
-      // Check if any enemy is targeting my hero
-      const threatBanner = document.getElementById('tact-threat-banner');
-      let inDanger = false;
-      state.enemies.forEach(e => {
-        if (e.intent && e.intent.targetX === myHero.x && e.intent.targetY === myHero.y) {
-          inDanger = true;
+        const nameInput = document.getElementById('tact-input-name');
+        if (nameInput && !nameInput.value) {
+          nameInput.value = myPlayerName || '';
         }
-      });
-      if (threatBanner) {
-        threatBanner.style.display = inDanger ? 'block' : 'none';
-        if (inDanger && navigator.vibrate) navigator.vibrate([80, 40, 80]);
+        renderTacticalSpawnGrid();
+        return;
       }
 
-      // Update Action Buttons
-      const btnMove = document.getElementById('btn-tact-move');
-      const btnPush = document.getElementById('btn-tact-push');
-      const btnSpecial = document.getElementById('btn-tact-special');
+      // Player is placed! Show combat sheet
+      if (setupView) setupView.style.display = 'none';
+      if (combatView) combatView.style.display = 'flex';
 
-      if (btnMove) btnMove.disabled = myHero.hasMoved;
-      if (btnPush) btnPush.disabled = myHero.hasActed;
-      if (btnSpecial) {
-        btnSpecial.disabled = myHero.hasActed;
-        btnSpecial.querySelector('span').innerText = `🎯 ${myHero.role.abilityName}`;
-      }
+      // Update Character Header
+      const charNameEl = document.getElementById('tact-active-char-name');
+      if (charNameEl) charNameEl.innerText = `${myHero.icon} ${myHero.name}`;
+
+      const classTitleEl = document.getElementById('tact-active-class-title');
+      if (classTitleEl) classTitleEl.innerText = `${myHero.className || myHero.classKey || 'Held'}`;
+
+      const hpEl = document.getElementById('tact-hp-display');
+      if (hpEl) hpEl.innerText = `❤️ ${myHero.hp}/${myHero.maxHp}`;
+
+      // Update ability buttons text based on class
+      const clsData = DND_CLASSES_DATA[myHero.classKey] || DND_CLASSES_DATA.KRIEGER;
+      const attackBtnText = document.getElementById('tact-btn-attack-text');
+      if (attackBtnText) attackBtnText.innerText = clsData.attackName;
+
+      const specialBtnText = document.getElementById('tact-btn-special-text');
+      if (specialBtnText) specialBtnText.innerText = clsData.specialName;
 
       // Render 8x8 Mini-Grid
       renderTacticalMiniGrid(state, myHero);
@@ -989,12 +1190,12 @@
       if (!gridEl) return;
       gridEl.innerHTML = '';
 
-      // Set default selected tile to adjacent tile if none
-      if (!selectedTargetCoord) {
-        selectedTargetCoord = { x: myHero.x, y: Math.min(7, myHero.y + 1) };
+      if (!selectedCombatCoord) {
+        // Default target: adjacent to hero
+        selectedCombatCoord = { x: myHero.x, y: Math.min(7, myHero.y + 1) };
       }
 
-      // 8x8 Grid: y from 7 (top) down to 0 (bottom) so north is up
+      // 8x8 Grid: y from 7 down to 0
       for (let y = 7; y >= 0; y--) {
         for (let x = 0; x < 8; x++) {
           const cell = document.createElement('div');
@@ -1002,69 +1203,64 @@
           cell.dataset.x = x;
           cell.dataset.y = y;
 
-          // Is it selected?
-          if (selectedTargetCoord && selectedTargetCoord.x === x && selectedTargetCoord.y === y) {
+          // Is cell selected?
+          if (selectedCombatCoord && selectedCombatCoord.x === x && selectedCombatCoord.y === y) {
             cell.classList.add('selected');
           }
 
-          // Is it my hero?
-          if (myHero.x === x && myHero.y === y) {
-            cell.classList.add('has-me');
-            cell.innerText = '🐌';
-          }
-          // Is it an ally?
-          else if (state.players.some(p => p.id !== myHero.id && p.x === x && p.y === y)) {
-            cell.innerText = '👥';
-          }
-          // Is it an enemy?
-          else {
-            const enemy = state.enemies.find(e => e.x === x && e.y === y);
-            if (enemy) {
+          // Check units on this cell
+          const unit = (state.units || []).find(u => u.x === x && u.y === y);
+          if (unit) {
+            cell.innerText = unit.icon || '👤';
+            if (unit.id === myHero.id) {
+              cell.classList.add('has-me');
+            } else if (unit.isMonster) {
               cell.classList.add('has-enemy');
-              cell.innerText = enemy.icon || '💀';
+            } else {
+              cell.classList.add('has-ally');
             }
           }
 
-          // Is it a carnival building?
-          const bld = state.buildings.find(b => b.x === x && b.y === y);
-          if (bld) {
-            cell.classList.add('has-building');
-            cell.innerText = bld.icon || '🎪';
-          }
-
-          // Is it telegraphed as an attack destination?
-          const isDanger = state.enemies.some(e => e.intent && e.intent.targetX === x && e.intent.targetY === y);
-          if (isDanger) {
-            cell.classList.add('danger-telegraph');
-          }
-
           cell.addEventListener('click', () => {
-            selectedTargetCoord = { x, y };
+            selectedCombatCoord = { x, y };
             document.querySelectorAll('#tactical-mini-grid .tact-cell').forEach(c => c.classList.remove('selected'));
             cell.classList.add('selected');
-            const info = document.getElementById('tact-selected-info');
-            if (info) info.innerText = `Gewähltes Feld: (${x}, ${y})`;
+            updateTacticalTargetBanner(state, myHero);
           });
 
           gridEl.appendChild(cell);
         }
       }
 
-      const info = document.getElementById('tact-selected-info');
-      if (info && selectedTargetCoord) {
-        info.innerText = `Gewähltes Feld: (${selectedTargetCoord.x}, ${selectedTargetCoord.y})`;
+      updateTacticalTargetBanner(state, myHero);
+    }
+
+    function updateTacticalTargetBanner(state, myHero) {
+      const banner = document.getElementById('tact-target-banner');
+      if (!banner || !selectedCombatCoord) return;
+
+      const { x, y } = selectedCombatCoord;
+      const targetUnit = (state.units || []).find(u => u.x === x && u.y === y);
+
+      if (targetUnit) {
+        if (targetUnit.id === myHero.id) {
+          banner.innerHTML = `🎯 Ziel: <b>Du selbst</b> (${targetUnit.hp}/${targetUnit.maxHp} LP)`;
+        } else if (targetUnit.isMonster) {
+          banner.innerHTML = `🎯 Ziel: <b style="color: #ef4444;">${targetUnit.icon} ${targetUnit.name}</b> (${targetUnit.hp}/${targetUnit.maxHp} LP)`;
+        } else {
+          banner.innerHTML = `🎯 Ziel: <b style="color: #38bdf8;">${targetUnit.icon} ${targetUnit.name}</b> (${targetUnit.hp}/${targetUnit.maxHp} LP)`;
+        }
+      } else {
+        banner.innerHTML = `🎯 Ziel: Feld (X: ${x}, Y: ${y}) <span style="color: #86efac;">[Frei]</span>`;
       }
     }
 
-    // Directional D-Pad Click
+    // Directional D-Pad for 1-Step Move
     document.querySelectorAll('.tact-dpad .dpad-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         if (!currentTacticalState) return;
-        const myHero = currentTacticalState.players.find(p => p.id === myPlayerId) || currentTacticalState.players[0];
-        if (!myHero || myHero.hasMoved) {
-          alert('Bereits bewegt in dieser Runde!');
-          return;
-        }
+        const myHero = (currentTacticalState.units || []).find(u => u.id === myPlayerId);
+        if (!myHero) return;
 
         const dir = btn.dataset.dir;
         let nx = myHero.x;
@@ -1078,22 +1274,45 @@
 
         sendPlayerMessage({
           type: 'TACTICAL_MOVE',
-          payload: { destX: nx, destY: ny }
+          payload: { playerId: myPlayerId, destX: nx, destY: ny }
         });
       });
     });
 
-    // Action Button Clicks
+    // In-Combat Actions
     const btnTactMove = document.getElementById('btn-tact-move');
     if (btnTactMove) {
       btnTactMove.addEventListener('click', () => {
-        if (!selectedTargetCoord) {
-          alert('Wähle zuerst ein Zielfeld auf der Mini-Karte!');
+        if (!selectedCombatCoord) {
+          alert('Wähle zuerst ein freies Zielfeld auf der Mini-Karte!');
           return;
         }
         sendPlayerMessage({
           type: 'TACTICAL_MOVE',
-          payload: { destX: selectedTargetCoord.x, destY: selectedTargetCoord.y }
+          payload: { playerId: myPlayerId, destX: selectedCombatCoord.x, destY: selectedCombatCoord.y }
+        });
+      });
+    }
+
+    const btnTactAttack = document.getElementById('btn-tact-attack');
+    if (btnTactAttack) {
+      btnTactAttack.addEventListener('click', () => {
+        if (!currentTacticalState || !selectedCombatCoord) {
+          alert('Wähle zuerst das Zielfeld auf der Mini-Karte!');
+          return;
+        }
+        const target = (currentTacticalState.units || []).find(u => u.x === selectedCombatCoord.x && u.y === selectedCombatCoord.y);
+        if (!target) {
+          alert('Auf dem gewählten Feld steht keine Einheit zum Angreifen!');
+          return;
+        }
+        sendPlayerMessage({
+          type: 'TACTICAL_ACTION',
+          payload: {
+            playerId: myPlayerId,
+            actionType: 'ATTACK',
+            targetId: target.id
+          }
         });
       });
     }
@@ -1101,16 +1320,33 @@
     const btnTactPush = document.getElementById('btn-tact-push');
     if (btnTactPush) {
       btnTactPush.addEventListener('click', () => {
-        if (!selectedTargetCoord) {
+        if (!currentTacticalState || !selectedCombatCoord) {
           alert('Wähle zuerst das Zielfeld auf der Mini-Karte!');
           return;
         }
+        const myHero = (currentTacticalState.units || []).find(u => u.id === myPlayerId);
+        const target = (currentTacticalState.units || []).find(u => u.x === selectedCombatCoord.x && u.y === selectedCombatCoord.y);
+        if (!target) {
+          alert('Auf dem gewählten Feld steht keine Einheit zum Stoßen!');
+          return;
+        }
+        if (target.id === myHero.id) {
+          alert('Du kannst dich nicht selbst stoßen!');
+          return;
+        }
+
+        let dirX = Math.sign(target.x - myHero.x);
+        let dirY = Math.sign(target.y - myHero.y);
+        if (dirX === 0 && dirY === 0) dirY = 1;
+
         sendPlayerMessage({
           type: 'TACTICAL_ACTION',
           payload: {
-            actionType: 'MELEE_PUSH',
-            targetX: selectedTargetCoord.x,
-            targetY: selectedTargetCoord.y
+            playerId: myPlayerId,
+            actionType: 'PUSH',
+            targetId: target.id,
+            dirX,
+            dirY
           }
         });
       });
@@ -1119,31 +1355,21 @@
     const btnTactSpecial = document.getElementById('btn-tact-special');
     if (btnTactSpecial) {
       btnTactSpecial.addEventListener('click', () => {
-        if (!selectedTargetCoord) {
-          alert('Wähle zuerst das Zielfeld auf der Mini-Karte!');
-          return;
-        }
+        if (!currentTacticalState) return;
+        const myHero = (currentTacticalState.units || []).find(u => u.id === myPlayerId);
+        const target = selectedCombatCoord ? (currentTacticalState.units || []).find(u => u.x === selectedCombatCoord.x && u.y === selectedCombatCoord.y) : null;
+
+        const isCleric = myHero && myHero.classKey === 'KLERIKER';
+        const actionType = isCleric ? 'HEAL' : 'ATTACK';
+
         sendPlayerMessage({
           type: 'TACTICAL_ACTION',
           payload: {
-            actionType: 'SPECIAL_ABILITY',
-            targetX: selectedTargetCoord.x,
-            targetY: selectedTargetCoord.y
+            playerId: myPlayerId,
+            actionType,
+            targetId: target ? target.id : (myHero ? myHero.id : null)
           }
         });
-      });
-    }
-
-    const btnTactPass = document.getElementById('btn-tact-pass');
-    if (btnTactPass) {
-      btnTactPass.addEventListener('click', () => {
-        alert('Zug beendet! Warte auf die Ausführung...');
-        const btnSpecial = document.getElementById('btn-tact-special');
-        const btnPush = document.getElementById('btn-tact-push');
-        const btnMove = document.getElementById('btn-tact-move');
-        if (btnSpecial) btnSpecial.disabled = true;
-        if (btnPush) btnPush.disabled = true;
-        if (btnMove) btnMove.disabled = true;
       });
     }
 
