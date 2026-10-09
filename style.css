@@ -79,23 +79,26 @@ html, body {
   pointer-events: auto;
 }
 
-.screen.hidden {
-  opacity: 0;
-  pointer-events: none !important;
-  display: none !important;
-  transform: scale(0.95);
-}
-
-.screen.hidden * {
-  pointer-events: none !important;
-}
-
 .screen.active {
   opacity: 1;
   display: flex !important;
   pointer-events: auto;
   transform: scale(1);
 }
+
+.screen.hidden,
+.screen.active.hidden {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  display: none !important;
+  transform: scale(0.95);
+}
+
+.screen.hidden *,
+.screen.active.hidden * {
+  pointer-events: none !important;
+}
+
 
 /* START LOBBY CARD */
 .lobby-card {

@@ -103,6 +103,7 @@ class GameEngine {
         const bgMesh = new THREE.Mesh(planeGeom, planeMat);
         bgMesh.position.set(0, 0, 0);
         this.bgMesh = bgMesh;
+        this.bgMesh.visible = (this.gameMode === 'RACE');
         this.scene.add(bgMesh);
       },
       undefined,
@@ -143,42 +144,82 @@ class GameEngine {
     const tactHud = document.getElementById('tactical-hud');
     const raceHud = document.getElementById('game-hud');
     const lobbyScreen = document.getElementById('start-lobby');
+    const endScreen = document.getElementById('end-screen');
+    const editorPanel = document.getElementById('editor-panel');
 
     if (mode === 'TACTICAL') {
       btnRace?.classList.remove('active');
       btnTactical?.classList.add('active');
 
-      // Hide Race 2D Elements
+      // 1. Hide All Snail Racing 3D Scene Elements
       if (this.bgMesh) this.bgMesh.visible = false;
-      if (this.trackManager?.trackGroup) this.trackManager.trackGroup.visible = false;
-      this.snails.forEach(s => s.group.visible = false);
+      if (this.trackManager) this.trackManager.setVisible(false);
+      this.snails.forEach(s => s.setVisible(false));
 
-      // Hide race HUD / lobby, show tactical HUD
-      raceHud?.classList.add('hidden');
-      lobbyScreen?.classList.add('hidden');
-      tactHud?.classList.remove('hidden');
+      // 2. Hide All Race DOM Screens & HUDs
+      if (raceHud) {
+        raceHud.classList.add('hidden');
+        raceHud.style.display = 'none';
+      }
+      if (lobbyScreen) {
+        lobbyScreen.classList.remove('active');
+        lobbyScreen.classList.add('hidden');
+        lobbyScreen.style.display = 'none';
+      }
+      if (endScreen) {
+        endScreen.classList.remove('active');
+        endScreen.classList.add('hidden');
+        endScreen.style.display = 'none';
+      }
+      if (editorPanel) {
+        editorPanel.classList.add('hidden');
+        editorPanel.style.display = 'none';
+      }
 
-      // Start Tactical Combat
+      // 3. Show Tactical HUD
+      if (tactHud) {
+        tactHud.classList.remove('hidden');
+        tactHud.style.display = 'block';
+      }
+
+      // 4. Start Tactical Combat
       this.tacticalManager.startTacticalBattle();
     } else {
       btnTactical?.classList.remove('active');
       btnRace?.classList.add('active');
 
-      // Show Race 2D Elements
+      // 1. Restore Snail Racing 3D Scene Elements
       if (this.bgMesh) this.bgMesh.visible = true;
-      if (this.trackManager?.trackGroup) this.trackManager.trackGroup.visible = true;
-      this.snails.forEach(s => s.group.visible = true);
+      if (this.trackManager) this.trackManager.setVisible(true);
+      this.snails.forEach(s => s.setVisible(true));
 
-      // Hide tactical HUD
-      tactHud?.classList.add('hidden');
-      if (this.gameState === 'RACING') {
-        raceHud?.classList.remove('hidden');
-      } else {
-        lobbyScreen?.classList.remove('hidden');
+      // 2. Hide Tactical HUD & Stop Tactical Battle
+      if (tactHud) {
+        tactHud.classList.add('hidden');
+        tactHud.style.display = 'none';
       }
-
-      // Stop Tactical Combat
       this.tacticalManager.stopTacticalBattle();
+
+      // 3. Restore appropriate Race DOM Screen
+      if (this.gameState === 'RACING') {
+        if (raceHud) {
+          raceHud.classList.remove('hidden');
+          raceHud.style.display = 'block';
+        }
+      } else if (this.gameState === 'FINISHED') {
+        if (endScreen) {
+          endScreen.classList.remove('hidden');
+          endScreen.classList.add('active');
+          endScreen.style.display = 'flex';
+        }
+      } else {
+        // LOBBY
+        if (lobbyScreen) {
+          lobbyScreen.classList.remove('hidden');
+          lobbyScreen.classList.add('active');
+          lobbyScreen.style.display = 'flex';
+        }
+      }
     }
 
     // Broadcast mode change to controllers
@@ -710,7 +751,11 @@ class GameEngine {
     const btnExecEnemies = document.getElementById('btn-tact-exec-enemies');
     if (btnExecEnemies) {
       btnExecEnemies.addEventListener('click', () => {
-        this.tacticalManager.executeEnemyPhase();
+        if (this.tacticalManager.phase === 'VICTORY' || this.tacticalManager.phase === 'DEFEAT') {
+          this.tacticalManager.startTacticalBattle();
+        } else {
+          this.tacticalManager.executeEnemyPhase();
+        }
       });
     }
 
@@ -972,6 +1017,11 @@ class GameEngine {
     this.camera.top = this.orthoHeight;
     this.camera.bottom = -this.orthoHeight;
     this.camera.updateProjectionMatrix();
+
+    if (this.tacticalManager?.tacticalCamera) {
+      this.tacticalManager.tacticalCamera.aspect = this.aspect;
+      this.tacticalManager.tacticalCamera.updateProjectionMatrix();
+    }
 
     this.renderer.setSize(window.innerWidth, window.innerHeight);
   }

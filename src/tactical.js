@@ -1349,6 +1349,15 @@ export class TacticalCombatManager {
       else if (this.phase === 'VICTORY') phaseEl.innerText = '🏆 SIEG! Der Jahrmarkt ist gerettet!';
       else if (this.phase === 'DEFEAT') phaseEl.innerText = '💀 NIEDERLAGE! Der Jahrmarkt wurde überrannt!';
     }
+
+    const execBtn = document.getElementById('btn-tact-exec-enemies');
+    if (execBtn) {
+      if (this.phase === 'VICTORY' || this.phase === 'DEFEAT') {
+        execBtn.innerText = '🔄 KAMPF NEU STARTEN';
+      } else {
+        execBtn.innerText = '⏭️ RUNDE BEENDEN & GEGNER AUSFÜHREN';
+      }
+    }
   }
 
   update(delta, time) {

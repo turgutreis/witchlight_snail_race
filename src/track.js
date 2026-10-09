@@ -279,4 +279,13 @@ export class TrackManager {
       this.rebuildCurve();
     }
   }
+
+  setVisible(visible) {
+    this.gridGroup.visible = visible && this.gridVisible;
+    this.handleGroup.visible = visible && this.editorVisible;
+    if (this.trackLineMesh) {
+      this.trackLineMesh.visible = visible && this.editorVisible;
+    }
+  }
 }
+

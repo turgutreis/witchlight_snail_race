@@ -475,4 +475,12 @@ export class Snail {
     this.trackManager.scene.remove(this.group);
     this.trackManager.scene.remove(this.trailMesh);
   }
+
+  setVisible(visible) {
+    this.group.visible = visible;
+    if (this.trailMesh) {
+      this.trailMesh.visible = visible;
+    }
+  }
 }
+
